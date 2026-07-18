@@ -1,0 +1,16 @@
+{
+  "name": "siraya-agent-tools",
+  "private": true,
+  "version": "0.1.0",
+  "description": "SIRAYA Model Router Agent SDK and MCP server.",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "deploy:mcp": "npx wrangler@latest deploy --config packages/mcp-worker/wrangler.toml"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  },
+  "packageManager": "pnpm@11.7.0"
+}

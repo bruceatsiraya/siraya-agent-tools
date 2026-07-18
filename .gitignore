@@ -1,0 +1,12 @@
+node_modules/
+.pnpm-store/
+.npm-cache/
+.wrangler/
+.dev.vars
+.env
+.env.*
+Siraya_mr-main/
+Siraya_mr-main.zip
+
+packages/*/dist/
+*.log

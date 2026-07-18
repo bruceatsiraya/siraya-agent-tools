@@ -1,0 +1,15 @@
+{
+  "name": "siraya-mcp-worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cloudflare Worker MCP server for SIRAYA Model Router.",
+  "type": "module",
+  "scripts": {
+    "build": "npx wrangler@latest deploy --dry-run --outdir dist --config wrangler.toml",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "deploy": "npx wrangler@latest deploy --config wrangler.toml"
+  },
+  "dependencies": {
+    "@siraya/agent": "workspace:*"
+  }
+}

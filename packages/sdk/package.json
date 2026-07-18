@@ -1,0 +1,41 @@
+{
+  "name": "@siraya/agent",
+  "version": "0.1.0",
+  "description": "Agent SDK for SIRAYA Model Router.",
+  "keywords": [
+    "siraya",
+    "ai",
+    "agent",
+    "model-router",
+    "llm"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bruceatsiraya/siraya-agent-tools.git",
+    "directory": "packages/sdk"
+  },
+  "homepage": "https://siraya-mcp.bruceatsiraya.xyz/docs/sdk",
+  "bugs": {
+    "url": "https://github.com/bruceatsiraya/siraya-agent-tools/issues"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}

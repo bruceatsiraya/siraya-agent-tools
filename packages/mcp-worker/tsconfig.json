@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@siraya/agent": ["../sdk/src/index.ts"]
+    },
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts"]
+}
