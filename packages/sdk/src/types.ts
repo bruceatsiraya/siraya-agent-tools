@@ -1,5 +1,7 @@
 export type SirayaApiFormat = "openai_chat" | "openai_responses" | "anthropic_messages";
 
+export type SirayaModelCategory = "text" | "image" | "video" | "audio" | "embedding" | "rerank";
+
 export type SirayaTask =
   | "chat"
   | "agent"
@@ -24,7 +26,11 @@ export interface SirayaModel {
 export interface SirayaModelCapability {
   id: string;
   provider?: string;
-  family: "gpt" | "claude" | "gemini" | "deepseek" | "grok" | "qwen" | "kimi" | "glm" | "minimax" | "seed" | "image" | "video" | "embedding" | "rerank" | "other";
+  providerName: string;
+  family: "gpt" | "claude" | "gemini" | "deepseek" | "grok" | "qwen" | "kimi" | "glm" | "minimax" | "seed" | "image" | "video" | "audio" | "embedding" | "rerank" | "other";
+  category: SirayaModelCategory;
+  documentationUrl?: string;
+  capabilitySource: "declared" | "inferred";
   apiFormats: SirayaApiFormat[];
   modalities: string[];
   features: {

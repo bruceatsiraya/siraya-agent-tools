@@ -36,6 +36,7 @@ const FAMILY_PARAMETERS: Record<SirayaModelCapability["family"], string[]> = {
   seed: [],
   image: ["prompt", "n", "size", "quality", "response_format"],
   video: ["prompt", "duration", "seconds", "image_url"],
+  audio: ["input", "file", "language", "response_format", "temperature"],
   embedding: ["input", "encoding_format", "dimensions"],
   rerank: ["query", "documents", "top_n"],
   other: []
@@ -43,22 +44,28 @@ const FAMILY_PARAMETERS: Record<SirayaModelCapability["family"], string[]> = {
 
 export function inferCapabilities(model: SirayaModel): SirayaModelCapability {
   const id = model.id.toLowerCase();
-  const provider = typeof model.owned_by === "string" ? model.owned_by : undefined;
-  const family = inferFamily(id, provider);
-  const isImage = family === "image" || id.includes("image") || id.includes("imagen");
-  const isVideo = family === "video" || id.includes("video") || id.includes("veo") || id.includes("seedance");
-  const isEmbedding = family === "embedding" || id.includes("embedding") || id.includes("embed");
-  const isRerank = family === "rerank" || id.includes("rerank");
-  const textLike = !isImage && !isVideo && !isEmbedding && !isRerank;
+  const provider = inferProvider(id, typeof model.owned_by === "string" ? model.owned_by : undefined);
+  const providerInfo = PROVIDERS[provider] ?? PROVIDERS.other;
+  const family = inferFamily(id);
+  const category = inferCategory(family);
+  const isImage = category === "image";
+  const isVideo = category === "video";
+  const isAudio = category === "audio";
+  const isEmbedding = category === "embedding";
+  const isRerank = category === "rerank";
+  const textLike = category === "text";
   const claudeLike = family === "claude";
   const gptLike = family === "gpt";
   const geminiLike = family === "gemini";
+  const grokLike = family === "grok";
+  const visionText = textLike && (claudeLike || geminiLike || gptLike || grokLike);
 
   const supportedParameters = unique([
     ...BASE_PARAMETERS,
     ...(FAMILY_PARAMETERS[family] ?? []),
     ...(isImage ? FAMILY_PARAMETERS.image : []),
     ...(isVideo ? FAMILY_PARAMETERS.video : []),
+    ...(isAudio ? FAMILY_PARAMETERS.audio : []),
     ...(isEmbedding ? FAMILY_PARAMETERS.embedding : []),
     ...(isRerank ? FAMILY_PARAMETERS.rerank : [])
   ]);
@@ -66,7 +73,11 @@ export function inferCapabilities(model: SirayaModel): SirayaModelCapability {
   return {
     id: model.id,
     provider,
+    providerName: providerInfo.name,
     family,
+    category,
+    documentationUrl: providerInfo.documentationUrl,
+    capabilitySource: "inferred",
     apiFormats: textLike
       ? ["openai_chat", "openai_responses", "anthropic_messages"]
       : ["openai_chat"],
@@ -74,19 +85,20 @@ export function inferCapabilities(model: SirayaModel): SirayaModelCapability {
       ...(textLike ? ["text"] : []),
       ...(isImage ? ["image_output"] : []),
       ...(isVideo ? ["video_output"] : []),
+      ...(isAudio ? ["audio_input", "text_output"] : []),
       ...(isEmbedding ? ["embedding"] : []),
       ...(isRerank ? ["rerank"] : []),
-      ...((claudeLike || geminiLike || gptLike) && textLike ? ["image_input", "pdf_input"] : [])
+      ...(visionText ? ["image_input", "pdf_input"] : [])
     ],
     features: {
       streaming: textLike,
       toolCalling: textLike,
       structuredOutputs: textLike,
-      reasoning: gptLike || claudeLike || geminiLike || family === "grok",
+      reasoning: inferReasoning(family, id),
       promptCaching: claudeLike ? "explicit" : textLike ? "implicit" : "none",
-      webSearch: gptLike,
-      imageInput: (claudeLike || geminiLike || gptLike) && textLike,
-      pdfInput: (claudeLike || geminiLike || gptLike) && textLike,
+      webSearch: false,
+      imageInput: visionText,
+      pdfInput: visionText && !grokLike,
       imageGeneration: isImage,
       videoGeneration: isVideo,
       embeddings: isEmbedding,
@@ -143,26 +155,72 @@ export function validateRequest(model: SirayaModelCapability, request: Record<st
   return issues;
 }
 
-function inferFamily(id: string, provider?: string): SirayaModelCapability["family"] {
-  const p = provider?.toLowerCase() ?? "";
-  if (id.includes("gpt") || id.includes("o1") || id.includes("o3") || p.includes("openai")) return "gpt";
-  if (id.includes("claude") || p.includes("anthropic")) return "claude";
-  if (id.includes("gemini") || id.includes("imagen") || p.includes("google")) return id.includes("imagen") ? "image" : "gemini";
-  if (id.includes("deepseek") || p.includes("deepseek")) return "deepseek";
-  if (id.includes("grok") || p.includes("x-ai")) return "grok";
-  if (id.includes("qwen") || p.includes("alibaba")) return "qwen";
-  if (id.includes("kimi") || p.includes("moonshot")) return "kimi";
-  if (id.includes("glm") || p.includes("z-ai")) return "glm";
-  if (id.includes("minimax") || p.includes("minimax")) return "minimax";
-  if (id.includes("seedream")) return "image";
-  if (id.includes("seedance")) return "video";
-  if (id.includes("veo")) return "video";
-  if (id.includes("image")) return "image";
+function inferFamily(id: string): SirayaModelCapability["family"] {
+  if (id.includes("seedance") || id.includes("veo") || id.includes("video")) return "video";
+  if (id.includes("seedream") || id.includes("imagen") || id.includes("gpt-image") || id.includes("-image")) return "image";
+  if (id.includes("asr") || id.includes("transcri") || id.includes("speech") || id.includes("tts") || id.includes("audio")) return "audio";
   if (id.includes("embed")) return "embedding";
   if (id.includes("rerank")) return "rerank";
+  if (id.includes("gpt") || /(^|[-/])o[134]([-.]|$)/.test(id)) return "gpt";
+  if (id.includes("claude")) return "claude";
+  if (id.includes("gemini")) return "gemini";
+  if (id.includes("deepseek")) return "deepseek";
+  if (id.includes("grok")) return "grok";
+  if (id.includes("qwen")) return "qwen";
+  if (id.includes("kimi")) return "kimi";
+  if (id.includes("glm")) return "glm";
+  if (id.includes("minimax")) return "minimax";
   if (id.includes("seed")) return "seed";
   return "other";
 }
+
+function inferProvider(id: string, declaredProvider?: string): string {
+  if (id.startsWith("siraya-") || id.startsWith("dola-")) return "siraya";
+  if (id.includes("bytedance") || id.includes("seedance") || id.includes("seedream") || id.startsWith("seed-")) return "bytedance";
+  if (id.includes("claude")) return "anthropic";
+  if (id.includes("gemini") || id.includes("imagen") || id.includes("veo")) return "google";
+  if (id.includes("deepseek")) return "deepseek";
+  if (id.includes("grok")) return "xai";
+  if (id.includes("qwen")) return "alibaba";
+  if (id.includes("kimi")) return "moonshot";
+  if (id.includes("glm")) return "zhipu";
+  if (id.includes("minimax")) return "minimax";
+  if (id.includes("gpt") || /(^|[-/])o[134]([-.]|$)/.test(id)) return "openai";
+  const normalized = declaredProvider?.toLowerCase();
+  return normalized && normalized !== "openai" ? normalized : "other";
+}
+
+function inferCategory(family: SirayaModelCapability["family"]): SirayaModelCapability["category"] {
+  if (["image", "video", "audio", "embedding", "rerank"].includes(family)) {
+    return family as SirayaModelCapability["category"];
+  }
+  return "text";
+}
+
+function inferReasoning(family: SirayaModelCapability["family"], id: string): boolean {
+  if (id.includes("non-reasoning")) return false;
+  if (family === "gpt") return id.includes("gpt-5") || /(^|[-/])o[134]([-.]|$)/.test(id);
+  if (["claude", "gemini", "deepseek", "grok"].includes(family)) return true;
+  if (family === "qwen") return id.includes("max") || id.includes("plus");
+  if (family === "kimi") return id.includes("k2.5");
+  if (family === "glm") return id.includes("5");
+  return false;
+}
+
+const PROVIDERS: Record<string, { name: string; documentationUrl: string }> = {
+  openai: { name: "OpenAI", documentationUrl: "https://platform.openai.com/docs/models" },
+  anthropic: { name: "Anthropic", documentationUrl: "https://docs.anthropic.com/en/docs/about-claude/models/overview" },
+  google: { name: "Google", documentationUrl: "https://ai.google.dev/gemini-api/docs/models" },
+  deepseek: { name: "DeepSeek", documentationUrl: "https://api-docs.deepseek.com/quick_start/pricing" },
+  xai: { name: "xAI", documentationUrl: "https://docs.x.ai/developers/models" },
+  alibaba: { name: "Alibaba Cloud", documentationUrl: "https://www.alibabacloud.com/help/en/model-studio/getting-started/models" },
+  moonshot: { name: "Moonshot AI", documentationUrl: "https://platform.moonshot.ai/docs/intro" },
+  zhipu: { name: "Z.ai", documentationUrl: "https://docs.z.ai/guides/overview/models" },
+  minimax: { name: "MiniMax", documentationUrl: "https://platform.minimax.io/docs/guides/models-intro" },
+  bytedance: { name: "ByteDance Seed", documentationUrl: "https://seed.bytedance.com/en/" },
+  siraya: { name: "SIRAYA", documentationUrl: "https://docs.siraya.ai/docs/" },
+  other: { name: "Other", documentationUrl: "https://docs.siraya.ai/docs/" }
+};
 
 function inferNotes(family: SirayaModelCapability["family"], id: string): string[] {
   const notes: string[] = [];

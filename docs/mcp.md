@@ -36,7 +36,8 @@ These endpoints are useful for debugging and for non-MCP clients:
 ```text
 GET  /health
 GET  /registry
-GET  /models
+GET  /models        # HTML catalog for browsers; full registry when requested as JSON
+GET  /api/models    # JSON model list
 POST /refresh
 POST /mcp
 ```
@@ -144,7 +145,7 @@ The scheduled job:
 
 1. Calls `GET https://llm.siraya.ai/v1/models`.
 2. Builds the capability registry.
-3. Stores the latest registry in Cloudflare KV under `registry:latest`.
+3. Stores the latest registry in Cloudflare KV under the current versioned registry key.
 
 Manual refresh:
 

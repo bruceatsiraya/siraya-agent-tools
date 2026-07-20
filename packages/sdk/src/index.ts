@@ -10,6 +10,7 @@ export type {
   SirayaApiFormat,
   SirayaClientOptions,
   SirayaModel,
+  SirayaModelCategory,
   SirayaModelCapability,
   SirayaRegistry,
   SirayaTask,

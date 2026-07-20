@@ -8,6 +8,7 @@ import {
   type SirayaRegistry
 } from "@siraya/agent";
 import { renderDocs } from "./docs.js";
+import { renderModelCatalog } from "./catalog.js";
 
 interface Env {
   SIRAYA_API_KEY?: string;
@@ -23,20 +24,24 @@ interface JsonRpcRequest {
   params?: Record<string, unknown>;
 }
 
-const REGISTRY_KEY = "registry:latest";
+const REGISTRY_KEY = "registry:latest:v3";
 const DEFAULT_BASE_URL = "https://llm.siraya.ai/v1";
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }));
+    if (url.pathname === "/models" && request.method === "GET" && wantsHtml(request, url)) {
+      return renderModelCatalog(await getRegistry(env));
+    }
     if (request.method === "GET") {
       const docs = renderDocs(url.pathname);
       if (docs) return docs;
     }
     if (url.pathname === "/health") return json({ ok: true, service: "siraya-mcp-worker" });
     if (url.pathname === "/registry" && request.method === "GET") return json(await getRegistry(env));
-    if (url.pathname === "/models" && request.method === "GET") return json({ data: (await getRegistry(env)).models });
+    if (url.pathname === "/models" && request.method === "GET") return json(await getRegistry(env));
+    if (url.pathname === "/api/models" && request.method === "GET") return json({ data: (await getRegistry(env)).models });
     if (url.pathname === "/refresh" && request.method === "POST") return refreshFromHttp(request, env);
     if (url.pathname === "/mcp" && request.method === "POST") return handleMcp(request, env);
     return json({ error: "not_found" }, 404);
@@ -46,6 +51,11 @@ export default {
     ctx.waitUntil(refreshRegistry(env));
   }
 };
+
+function wantsHtml(request: Request, url: URL): boolean {
+  if (url.searchParams.get("format") === "json") return false;
+  return request.headers.get("accept")?.includes("text/html") ?? false;
+}
 
 async function handleMcp(request: Request, env: Env): Promise<Response> {
   const body = await request.json() as JsonRpcRequest | JsonRpcRequest[];

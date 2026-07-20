@@ -17,7 +17,8 @@ const pages: Record<DocsRoute, Page> = {
         <div>
           <p class="lede">Give agents one stable interface for discovering SIRAYA models, checking capabilities, choosing the right route, and calling the model router without hand-defining every model.</p>
           <div class="actions">
-            <a class="button primary" href="/docs/sdk">Read SDK Docs</a>
+            <a class="button primary" href="/models">Browse Models</a>
+            <a class="button" href="/docs/sdk">Read SDK Docs</a>
             <a class="button" href="/docs/mcp">Connect MCP</a>
           </div>
         </div>
@@ -31,6 +32,7 @@ const pages: Record<DocsRoute, Page> = {
         </div>
       </section>
       <section class="tiles">
+        ${tile("Live Model Catalog", "Browse the daily-refreshed model list by vendor, category, modality, and capability.", "/models")}
         ${tile("TypeScript SDK", "Use @siraya/agent for model discovery, request validation, model recommendation, and tool-calling loops.", "/docs/sdk")}
         ${tile("Remote MCP Server", "Expose SIRAYA model discovery and calls to MCP-capable agents through Cloudflare Workers.", "/docs/mcp")}
         ${tile("Capability Registry", "Daily model registry generated from /v1/models plus documented SIRAYA parameter support rules.", "/docs/registry")}
@@ -183,6 +185,7 @@ console.log(result.getText());</code></pre>
           <code>GET /health</code>
           <code>GET /registry</code>
           <code>GET /models</code>
+          <code>GET /api/models</code>
           <code>POST /refresh</code>
           <code>POST /mcp</code>
         </div>
@@ -280,8 +283,9 @@ function normalizeRoute(pathname: string): DocsRoute | undefined {
 }
 
 function layout(page: Page, route: DocsRoute): string {
-  const navItems: Array<[DocsRoute, string]> = [
+  const navItems: Array<[string, string]> = [
     ["/", "Overview"],
+    ["/models", "Models"],
     ["/docs/sdk", "SDK"],
     ["/docs/mcp", "MCP"],
     ["/docs/registry", "Registry"],
