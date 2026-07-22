@@ -2,6 +2,50 @@ export type SirayaApiFormat = "openai_chat" | "openai_responses" | "anthropic_me
 
 export type SirayaModelCategory = "text" | "image" | "video" | "audio" | "embedding" | "rerank";
 
+export type SirayaCapabilityTag =
+  | "streaming"
+  | "tool_calling"
+  | "structured_output"
+  | "reasoning"
+  | "prompt_caching"
+  | "image_input"
+  | "pdf_input"
+  | "image_generation"
+  | "video_generation"
+  | "speech_recognition"
+  | "text_output"
+  | "embeddings"
+  | "reranking";
+
+export type SirayaTaskTag =
+  | "chat"
+  | "agent"
+  | "coding"
+  | "reasoning"
+  | "structured_output"
+  | "vision"
+  | "document_analysis"
+  | "image_generation"
+  | "video_generation"
+  | "speech_to_text"
+  | "semantic_search"
+  | "retrieval_ranking";
+
+export type SirayaModelTrait =
+  | "fast"
+  | "economy"
+  | "premium"
+  | "small"
+  | "multimodal"
+  | "specialized"
+  | "preview"
+  | "dated_snapshot"
+  | "content_policy_relaxed";
+
+export type SirayaModelLifecycle = "stable" | "preview" | "dated" | "unknown";
+export type SirayaQualityTier = "economy" | "standard" | "premium" | "specialized" | "unknown";
+export type SirayaSpeedTier = "fast" | "balanced" | "quality" | "unknown";
+
 export type SirayaTask =
   | "chat"
   | "agent"
@@ -57,6 +101,15 @@ export interface SirayaModelCapability {
   capabilitySource: "declared" | "inferred";
   apiFormats: SirayaApiFormat[];
   modalities: string[];
+  inputModalities: string[];
+  outputModalities: string[];
+  capabilityTags: SirayaCapabilityTag[];
+  taskTags: SirayaTaskTag[];
+  traits: SirayaModelTrait[];
+  lifecycle: SirayaModelLifecycle;
+  qualityTier: SirayaQualityTier;
+  speedTier: SirayaSpeedTier;
+  taxonomyConfidence: "declared" | "inferred";
   features: {
     streaming: boolean;
     toolCalling: boolean;
@@ -153,9 +206,21 @@ export interface CallModelResult {
 export interface RecommendModelOptions {
   task?: SirayaTask;
   require?: Partial<SirayaModelCapability["features"]>;
+  requireTags?: SirayaCapabilityTag[];
+  requireTasks?: SirayaTaskTag[];
+  preferTraits?: SirayaModelTrait[];
   preferProvider?: string[];
   avoidProvider?: string[];
   apiFormat?: SirayaApiFormat;
+}
+
+export interface FilterModelsOptions {
+  provider?: string | string[];
+  category?: SirayaModelCategory | SirayaModelCategory[];
+  capabilityTags?: SirayaCapabilityTag[];
+  taskTags?: SirayaTaskTag[];
+  traits?: SirayaModelTrait[];
+  lifecycle?: SirayaModelLifecycle;
 }
 
 export interface ValidationIssue {

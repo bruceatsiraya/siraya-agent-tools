@@ -2,6 +2,16 @@
 
 TypeScript Agent SDK for SIRAYA Model Router.
 
+The hosted registry normalizes every model into capability, task, trait, modality, lifecycle, quality, and speed labels shared by the SDK and MCP server.
+
+```ts
+const codingAgents = await siraya.filterModels({
+  capabilityTags: ["tool_calling", "reasoning"],
+  taskTags: ["coding", "agent"],
+  traits: ["fast"]
+});
+```
+
 ```ts
 import { Siraya, tool, stepCountIs } from "@siraya/agent";
 

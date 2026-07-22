@@ -22,8 +22,18 @@ That response tells us which model IDs are available, but most agent frameworks 
       "id": "claude-sonnet-4.6",
       "provider": "anthropic",
       "family": "claude",
+      "category": "text",
       "apiFormats": ["openai_chat", "openai_responses", "anthropic_messages"],
       "modalities": ["text", "image_input", "pdf_input"],
+      "inputModalities": ["text", "image", "pdf"],
+      "outputModalities": ["text"],
+      "capabilityTags": ["streaming", "tool_calling", "structured_output", "reasoning", "prompt_caching", "image_input", "pdf_input", "text_output"],
+      "taskTags": ["chat", "agent", "coding", "reasoning", "structured_output", "vision", "document_analysis"],
+      "traits": ["multimodal"],
+      "lifecycle": "stable",
+      "qualityTier": "standard",
+      "speedTier": "balanced",
+      "taxonomyConfidence": "inferred",
       "features": {
         "streaming": true,
         "toolCalling": true,
@@ -54,6 +64,7 @@ The first version builds capability metadata from:
 - `owned_by` provider.
 - model ID family patterns such as `gpt`, `claude`, `gemini`, `deepseek`, `imagen`, `veo`, `seedance`, `embedding`, and `rerank`.
 - SIRAYA parameter support documentation.
+- normalized task, trait, lifecycle, quality, speed, and input/output modality rules shared by SDK and MCP.
 
 This is enough for agent onboarding, but not perfect. The long-term product version should expose first-class capability metadata directly from SIRAYA's model catalog or a dedicated endpoint.
 

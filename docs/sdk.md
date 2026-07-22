@@ -69,6 +69,19 @@ console.log(registry.models[0]);
 
 The registry currently combines live `/v1/models` output with SDK inference rules based on model IDs and providers. It is intentionally conservative: when a feature cannot be confirmed, it is marked as unsupported or added as a note.
 
+Every model includes normalized `capabilityTags`, `taskTags`, `traits`, `inputModalities`, `outputModalities`, `lifecycle`, `qualityTier`, and `speedTier` fields. These exact labels are also returned by MCP.
+
+## Filter by Capability Labels
+
+```ts
+const models = await siraya.filterModels({
+  provider: ["openai", "anthropic", "google"],
+  capabilityTags: ["tool_calling", "reasoning"],
+  taskTags: ["coding", "agent"],
+  traits: ["fast"]
+});
+```
+
 ## Recommend a Model
 
 ```ts
@@ -78,6 +91,9 @@ const model = await siraya.recommendModel({
     toolCalling: true,
     reasoning: true
   },
+  requireTags: ["tool_calling", "reasoning"],
+  requireTasks: ["agent"],
+  preferTraits: ["fast"],
   apiFormat: "openai_chat"
 });
 

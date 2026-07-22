@@ -1,10 +1,12 @@
 import type {
+  FilterModelsOptions,
   RecommendModelOptions,
   SirayaModel,
   SirayaModelCapability,
   SirayaRegistry,
   ValidationIssue
 } from "./types.js";
+import { inferTaxonomy } from "./taxonomy.js";
 
 const BASE_PARAMETERS = [
   "model",
@@ -70,6 +72,22 @@ export function inferCapabilities(model: SirayaModel): SirayaModelCapability {
     ...(isRerank ? FAMILY_PARAMETERS.rerank : [])
   ]);
 
+  const features: SirayaModelCapability["features"] = {
+    streaming: textLike,
+    toolCalling: textLike,
+    structuredOutputs: textLike,
+    reasoning: inferReasoning(family, id),
+    promptCaching: claudeLike ? "explicit" : textLike ? "implicit" : "none",
+    webSearch: false,
+    imageInput: visionText,
+    pdfInput: visionText && !grokLike,
+    imageGeneration: isImage,
+    videoGeneration: isVideo,
+    embeddings: isEmbedding,
+    reranking: isRerank
+  };
+  const taxonomy = inferTaxonomy({ id: model.id, category, family, features });
+
   return {
     id: model.id,
     provider,
@@ -91,20 +109,8 @@ export function inferCapabilities(model: SirayaModel): SirayaModelCapability {
       ...(isRerank ? ["rerank"] : []),
       ...(visionText ? ["image_input", "pdf_input"] : [])
     ],
-    features: {
-      streaming: textLike,
-      toolCalling: textLike,
-      structuredOutputs: textLike,
-      reasoning: inferReasoning(family, id),
-      promptCaching: claudeLike ? "explicit" : textLike ? "implicit" : "none",
-      webSearch: false,
-      imageInput: visionText,
-      pdfInput: visionText && !grokLike,
-      imageGeneration: isImage,
-      videoGeneration: isVideo,
-      embeddings: isEmbedding,
-      reranking: isRerank
-    },
+    ...taxonomy,
+    features,
     supportedParameters,
     notes: inferNotes(family, id),
     raw: model
@@ -125,10 +131,25 @@ export function recommendModel(registry: SirayaRegistry, options: RecommendModel
     .filter((model) => matchesTask(model, options.task))
     .filter((model) => !options.apiFormat || model.apiFormats.includes(options.apiFormat))
     .filter((model) => matchesRequiredFeatures(model, options.require))
+    .filter((model) => !options.requireTags?.length || options.requireTags.every(tag => model.capabilityTags.includes(tag)))
+    .filter((model) => !options.requireTasks?.length || options.requireTasks.every(tag => model.taskTags.includes(tag)))
     .filter((model) => !options.preferProvider?.length || options.preferProvider.includes(model.provider ?? ""))
     .filter((model) => !options.avoidProvider?.includes(model.provider ?? ""));
 
   return candidates.sort(scoreModel(options))[0];
+}
+
+export function filterModels(registry: SirayaRegistry, options: FilterModelsOptions = {}): SirayaModelCapability[] {
+  const providers = arrayValue(options.provider);
+  const categories = arrayValue(options.category);
+  return registry.models.filter(model =>
+    (!providers.length || providers.includes(model.provider ?? ""))
+    && (!categories.length || categories.includes(model.category))
+    && (!options.capabilityTags?.length || options.capabilityTags.every(tag => model.capabilityTags.includes(tag)))
+    && (!options.taskTags?.length || options.taskTags.every(tag => model.taskTags.includes(tag)))
+    && (!options.traits?.length || options.traits.every(trait => model.traits.includes(trait)))
+    && (!options.lifecycle || model.lifecycle === options.lifecycle)
+  );
 }
 
 export function validateRequest(model: SirayaModelCapability, request: Record<string, unknown>): ValidationIssue[] {
@@ -176,8 +197,8 @@ function inferFamily(id: string): SirayaModelCapability["family"] {
 }
 
 function inferProvider(id: string, declaredProvider?: string): string {
-  if (id.startsWith("siraya-") || id.startsWith("dola-")) return "siraya";
-  if (id.includes("bytedance") || id.includes("seedance") || id.includes("seedream") || id.startsWith("seed-")) return "bytedance";
+  if (id.includes("siraya-") || id.includes("dola-")) return "siraya";
+  if (id.includes("bytedance") || id.includes("seedance") || id.includes("seedream") || id.includes("seed-")) return "bytedance";
   if (id.includes("claude")) return "anthropic";
   if (id.includes("gemini") || id.includes("imagen") || id.includes("veo")) return "google";
   if (id.includes("deepseek")) return "deepseek";
@@ -267,6 +288,7 @@ function scoreModel(options: RecommendModelOptions): (a: SirayaModelCapability, 
 function preferenceScore(model: SirayaModelCapability, options: RecommendModelOptions): number {
   let score = 0;
   if (options.preferProvider?.includes(model.provider ?? "")) score += 20;
+  if (options.preferTraits?.length) score += options.preferTraits.filter(trait => model.traits.includes(trait)).length * 4;
   if (model.family === "claude" && ["agent", "coding"].includes(options.task ?? "")) score += 8;
   if (model.family === "gpt" && ["reasoning", "structured_output"].includes(options.task ?? "")) score += 8;
   if (model.family === "gemini" && ["vision", "pdf"].includes(options.task ?? "")) score += 8;
@@ -278,4 +300,9 @@ function preferenceScore(model: SirayaModelCapability, options: RecommendModelOp
 
 function unique(values: string[]): string[] {
   return [...new Set(values)];
+}
+
+function arrayValue<T>(value?: T | T[]): T[] {
+  if (value === undefined) return [];
+  return Array.isArray(value) ? value : [value];
 }

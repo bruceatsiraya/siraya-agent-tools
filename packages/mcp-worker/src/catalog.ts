@@ -68,10 +68,10 @@ export function renderModelCatalog(registry: SirayaRegistry): Response {
         </div>
         <fieldset class="feature-filter">
           <legend>Capabilities</legend>
-          <label><input type="checkbox" value="toolCalling"> Tool use</label>
+          <label><input type="checkbox" value="tool_calling"> Tool use</label>
           <label><input type="checkbox" value="reasoning"> Reasoning</label>
-          <label><input type="checkbox" value="structuredOutputs"> Structured output</label>
-          <label><input type="checkbox" value="imageInput"> Vision</label>
+          <label><input type="checkbox" value="structured_output"> Structured output</label>
+          <label><input type="checkbox" value="image_input"> Vision</label>
         </fieldset>
       </section>
 
@@ -136,15 +136,29 @@ function catalogScript(): string {
     const categoryLabels = { text: "Text", image: "Image", video: "Video", audio: "Audio", embedding: "Embedding", rerank: "Rerank" };
     const featureLabels = {
       streaming: "Streaming",
-      toolCalling: "Tool use",
-      structuredOutputs: "Structured output",
+      tool_calling: "Tool use",
+      structured_output: "Structured output",
       reasoning: "Reasoning",
-      imageInput: "Vision",
-      pdfInput: "PDF",
-      imageGeneration: "Image generation",
-      videoGeneration: "Video generation",
+      prompt_caching: "Prompt caching",
+      image_input: "Vision",
+      pdf_input: "PDF",
+      image_generation: "Image generation",
+      video_generation: "Video generation",
+      speech_recognition: "Speech recognition",
+      text_output: "Text output",
       embeddings: "Embeddings",
       reranking: "Reranking"
+    };
+    const taskLabels = {
+      chat: "Chat", agent: "Agent", coding: "Coding", reasoning: "Reasoning",
+      structured_output: "Data extraction", vision: "Vision", document_analysis: "Document analysis",
+      image_generation: "Image generation", video_generation: "Video generation", speech_to_text: "Speech to text",
+      semantic_search: "Semantic search", retrieval_ranking: "Retrieval ranking"
+    };
+    const traitLabels = {
+      fast: "Fast", economy: "Economy", premium: "Premium", small: "Small", multimodal: "Multimodal",
+      specialized: "Specialized", preview: "Preview", dated_snapshot: "Dated snapshot",
+      content_policy_relaxed: "Relaxed content policy"
     };
     const state = { query: "", provider: "all", category: "all", features: new Set() };
 
@@ -275,12 +289,14 @@ function catalogScript(): string {
     }
 
     function matches(model) {
-      const capabilityText = Object.entries(model.features).filter(([, value]) => value === true).map(([key]) => featureLabels[key] || key).join(" ");
-      const haystack = [model.id, model.providerName, model.provider, model.family, model.category, ...model.modalities, capabilityText].join(" ").toLowerCase();
+      const capabilityText = (model.capabilityTags || []).map(key => featureLabels[key] || key).join(" ");
+      const taskText = (model.taskTags || []).map(key => taskLabels[key] || key).join(" ");
+      const traitText = (model.traits || []).map(key => traitLabels[key] || key).join(" ");
+      const haystack = [model.id, model.providerName, model.provider, model.family, model.category, ...model.modalities, capabilityText, taskText, traitText].join(" ").toLowerCase();
       return (!state.query || haystack.includes(state.query))
         && (state.provider === "all" || model.provider === state.provider)
         && (state.category === "all" || model.category === state.category)
-        && [...state.features].every(feature => model.features[feature] === true);
+        && [...state.features].every(feature => (model.capabilityTags || []).includes(feature));
     }
 
     function render() {
@@ -320,14 +336,26 @@ function catalogScript(): string {
       const body = el("div", "model-detail");
       const facts = el("dl", "facts");
       addFact(facts, "Family", model.family);
-      addFact(facts, "Modalities", model.modalities.join(", ") || "Not declared");
+      addFact(facts, "Input", (model.inputModalities || []).join(", ") || "Not declared");
+      addFact(facts, "Output", (model.outputModalities || []).join(", ") || "Not declared");
       addFact(facts, "API formats", model.apiFormats.join(", "));
+      addFact(facts, "Lifecycle", model.lifecycle || "unknown");
+      addFact(facts, "Quality tier", model.qualityTier || "unknown");
+      addFact(facts, "Speed tier", model.speedTier || "unknown");
       addFact(facts, "Metadata", model.capabilitySource || "inferred");
       body.append(facts);
 
       const capabilityBlock = el("div", "detail-block");
       capabilityBlock.append(el("strong", "detail-label", "Capabilities"), featureChips(model));
       body.append(capabilityBlock);
+
+      const taskBlock = el("div", "detail-block");
+      taskBlock.append(el("strong", "detail-label", "Best-fit tasks"), taxonomyChips(model.taskTags || [], taskLabels));
+      body.append(taskBlock);
+
+      const traitBlock = el("div", "detail-block");
+      traitBlock.append(el("strong", "detail-label", "Model traits"), taxonomyChips(model.traits || [], traitLabels));
+      body.append(traitBlock);
 
       const parameterBlock = el("div", "detail-block");
       parameterBlock.append(el("strong", "detail-label", "Known parameters"), el("p", "parameter-list", model.supportedParameters.join(", ")));
@@ -394,12 +422,19 @@ function catalogScript(): string {
 
     function featureChips(model, limit = Infinity) {
       const wrap = el("span", "chips");
-      const enabled = Object.entries(model.features)
-        .filter(([key, value]) => value === true && featureLabels[key])
-        .map(([key]) => featureLabels[key]);
+      const enabled = (model.capabilityTags || [])
+        .filter(key => featureLabels[key])
+        .map(key => featureLabels[key]);
       enabled.slice(0, limit).forEach(label => wrap.append(el("span", "chip", label)));
       if (enabled.length > limit) wrap.append(el("span", "chip more", "+" + (enabled.length - limit)));
       if (!enabled.length) wrap.append(el("span", "chip muted", "Specialized endpoint"));
+      return wrap;
+    }
+
+    function taxonomyChips(values, labels) {
+      const wrap = el("span", "chips");
+      values.forEach(value => wrap.append(el("span", "chip", labels[value] || value)));
+      if (!values.length) wrap.append(el("span", "chip muted", "No inferred labels"));
       return wrap;
     }
 

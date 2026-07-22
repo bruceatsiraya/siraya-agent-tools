@@ -20,7 +20,8 @@ The server exposes these MCP tools:
 
 | Tool | Purpose |
 | --- | --- |
-| `siraya_list_models` | List models and inferred capabilities from the cached registry. |
+| `siraya_list_models` | List or filter models by normalized capability, task, trait, provider, category, and lifecycle labels. |
+| `siraya_list_capability_taxonomy` | Return all supported labels, descriptions, and current model counts. |
 | `siraya_get_model_capabilities` | Return capability details for one model. |
 | `siraya_recommend_model` | Recommend a model for a task and required features. |
 | `siraya_validate_request` | Warn when request parameters may be dropped or ignored. |
@@ -84,6 +85,27 @@ curl https://siraya-mcp.bruceatsiraya.xyz/mcp \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
 ```
 
+Discover the taxonomy before selecting a model:
+
+```bash
+curl https://siraya-mcp.bruceatsiraya.xyz/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"siraya_list_capability_taxonomy","arguments":{}}}'
+```
+
+Filter for fast coding agents:
+
+```json
+{
+  "name": "siraya_list_models",
+  "arguments": {
+    "capabilityTags": ["tool_calling", "reasoning"],
+    "taskTags": ["coding", "agent"],
+    "traits": ["fast"]
+  }
+}
+```
+
 Recommend a model:
 
 ```bash
@@ -91,7 +113,7 @@ curl https://siraya-mcp.bruceatsiraya.xyz/mcp \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
-    "id": 3,
+    "id": 4,
     "method": "tools/call",
     "params": {
       "name": "siraya_recommend_model",
@@ -100,7 +122,9 @@ curl https://siraya-mcp.bruceatsiraya.xyz/mcp \
         "require": {
           "toolCalling": true,
           "reasoning": true
-        }
+        },
+        "requireTags": ["tool_calling", "reasoning"],
+        "requireTasks": ["agent"]
       }
     }
   }'

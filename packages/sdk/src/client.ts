@@ -1,5 +1,6 @@
 import {
   buildRegistry,
+  filterModels,
   recommendModel,
   validateRequest
 } from "./registry.js";
@@ -7,6 +8,7 @@ import type {
   CallModelOptions,
   CallModelResult,
   ChatMessage,
+  FilterModelsOptions,
   RecommendModelOptions,
   SirayaClientOptions,
   SirayaModel,
@@ -54,6 +56,10 @@ export class Siraya {
   async getModelCapabilities(modelId: string): Promise<SirayaModelCapability | undefined> {
     const registry = await this.getRegistry();
     return registry.models.find((model) => model.id === modelId);
+  }
+
+  async filterModels(options: FilterModelsOptions = {}): Promise<SirayaModelCapability[]> {
+    return filterModels(await this.getRegistry(), options);
   }
 
   async recommendModel(options: RecommendModelOptions = {}): Promise<SirayaModelCapability> {

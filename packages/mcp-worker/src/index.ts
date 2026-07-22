@@ -1,7 +1,10 @@
 import {
+  CAPABILITY_TAXONOMY,
   buildRegistry,
+  filterModels,
   recommendModel,
   validateRequest,
+  type FilterModelsOptions,
   type RecommendModelOptions,
   type SirayaModel,
   type SirayaModelCapability,
@@ -25,7 +28,7 @@ interface JsonRpcRequest {
   params?: Record<string, unknown>;
 }
 
-const REGISTRY_KEY = "registry:latest:v5";
+const REGISTRY_KEY = "registry:latest:v6";
 const DEFAULT_BASE_URL = "https://llm.siraya.ai/v1";
 
 export default {
@@ -108,7 +111,15 @@ async function callTool(
     const refresh = Boolean(args.refresh);
     if (refresh) requireAgentApiKey(agentApiKey);
     const registry = await getRegistry(env, refresh, agentApiKey);
-    return { generatedAt: registry.generatedAt, models: registry.models };
+    const models = filterModels(registry, args as FilterModelsOptions);
+    return { generatedAt: registry.generatedAt, count: models.length, models };
+  }
+  if (name === "siraya_list_capability_taxonomy") {
+    const registry = await getRegistry(env, false, agentApiKey);
+    return {
+      taxonomy: CAPABILITY_TAXONOMY,
+      counts: taxonomyCounts(registry)
+    };
   }
   if (name === "siraya_get_model_capabilities") {
     const registry = await getRegistry(env, false, agentApiKey);
@@ -218,12 +229,25 @@ function toolList(): Array<Record<string, unknown>> {
   return [
     {
       name: "siraya_list_models",
-      description: "List SIRAYA Model Router models with inferred capabilities from the daily registry.",
+      description: "List SIRAYA Model Router models with normalized capability, task, trait, modality, lifecycle, quality, and speed labels.",
       inputSchema: {
         type: "object",
-        properties: { refresh: { type: "boolean", description: "Refresh from SIRAYA before returning." } },
+        properties: {
+          refresh: { type: "boolean", description: "Refresh from SIRAYA before returning." },
+          provider: stringOrStringArraySchema("Filter by normalized provider ID."),
+          category: stringOrStringArraySchema("Filter by model category."),
+          capabilityTags: stringArraySchema("Require every capability tag."),
+          taskTags: stringArraySchema("Require every task tag."),
+          traits: stringArraySchema("Require every model trait."),
+          lifecycle: { type: "string", description: "Filter by lifecycle: stable, preview, dated, or unknown." }
+        },
         additionalProperties: false
       }
+    },
+    {
+      name: "siraya_list_capability_taxonomy",
+      description: "List the normalized capability, task, and trait labels exposed by SIRAYA, including current model counts for each label.",
+      inputSchema: { type: "object", properties: {}, additionalProperties: false }
     },
     {
       name: "siraya_get_model_capabilities",
@@ -243,6 +267,9 @@ function toolList(): Array<Record<string, unknown>> {
         properties: {
           task: { type: "string" },
           require: { type: "object" },
+          requireTags: stringArraySchema("Require every capability tag."),
+          requireTasks: stringArraySchema("Require every task tag."),
+          preferTraits: stringArraySchema("Prefer models carrying these traits."),
           preferProvider: { type: "array", items: { type: "string" } },
           avoidProvider: { type: "array", items: { type: "string" } },
           apiFormat: { type: "string" }
@@ -268,6 +295,28 @@ function toolList(): Array<Record<string, unknown>> {
     rawCallTool("siraya_generate_image", "Call SIRAYA /v1/images/generations."),
     rawCallTool("siraya_generate_video", "Call SIRAYA /v1/videos/generations.")
   ];
+}
+
+function taxonomyCounts(registry: SirayaRegistry): Record<string, Record<string, number>> {
+  const count = (values: string[]): Record<string, number> => values.reduce<Record<string, number>>((result, value) => {
+    result[value] = (result[value] ?? 0) + 1;
+    return result;
+  }, {});
+  return {
+    capabilityTags: count(registry.models.flatMap(model => model.capabilityTags)),
+    taskTags: count(registry.models.flatMap(model => model.taskTags)),
+    traits: count(registry.models.flatMap(model => model.traits)),
+    categories: count(registry.models.map(model => model.category)),
+    providers: count(registry.models.map(model => model.provider ?? "other"))
+  };
+}
+
+function stringArraySchema(description: string): Record<string, unknown> {
+  return { type: "array", items: { type: "string" }, description };
+}
+
+function stringOrStringArraySchema(description: string): Record<string, unknown> {
+  return { oneOf: [{ type: "string" }, { type: "array", items: { type: "string" } }], description };
 }
 
 function rawCallTool(name: string, description: string): Record<string, unknown> {

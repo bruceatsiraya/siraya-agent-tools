@@ -88,6 +88,14 @@ const siraya = new Siraya({
         <pre><code>const models = await siraya.listModels();
 console.log(models.map((model) => model.id));</code></pre>
       `)}
+      ${section("Filter by Capability Labels", `
+        <pre><code>const models = await siraya.filterModels({
+  capabilityTags: ["tool_calling", "reasoning"],
+  taskTags: ["coding", "agent"],
+  traits: ["fast"]
+});</code></pre>
+        <p>The same normalized labels are exposed by the hosted registry and MCP server.</p>
+      `)}
       ${section("Recommend a Model", `
         <pre><code>const model = await siraya.recommendModel({
   task: "agent",
@@ -95,6 +103,9 @@ console.log(models.map((model) => model.id));</code></pre>
     toolCalling: true,
     reasoning: true
   },
+  requireTags: ["tool_calling", "reasoning"],
+  requireTasks: ["agent"],
+  preferTraits: ["fast"],
   apiFormat: "openai_chat"
 });
 
@@ -151,7 +162,8 @@ console.log(result.getText());</code></pre>
         <table>
           <thead><tr><th>Tool</th><th>Purpose</th></tr></thead>
           <tbody>
-            ${toolRow("siraya_list_models", "List models and inferred capabilities from the cached registry.")}
+            ${toolRow("siraya_list_models", "List or filter models by normalized taxonomy labels.")}
+            ${toolRow("siraya_list_capability_taxonomy", "Return label definitions and current model counts.")}
             ${toolRow("siraya_get_model_capabilities", "Return capability details for one model.")}
             ${toolRow("siraya_recommend_model", "Recommend a model for a task and required features.")}
             ${toolRow("siraya_validate_request", "Warn when request parameters may be dropped or ignored.")}
@@ -198,7 +210,7 @@ console.log(result.getText());</code></pre>
     description: "Shared capability layer used by both the SDK and MCP server.",
     body: `
       ${section("Purpose", `
-        <p>SIRAYA already exposes live model IDs through <code>GET https://llm.siraya.ai/v1/models</code>. Agents need more context: modalities, tool support, reasoning support, request formats, and parameter behavior.</p>
+        <p>SIRAYA already exposes live model IDs through <code>GET https://llm.siraya.ai/v1/models</code>. Agents need more context: normalized capability, task and trait labels, input/output modalities, lifecycle, quality and speed tiers, request formats, and parameter behavior.</p>
       `)}
       ${section("Registry Shape", `
         <pre><code>{
@@ -210,8 +222,17 @@ console.log(result.getText());</code></pre>
       "id": "claude-sonnet-4.6",
       "provider": "anthropic",
       "family": "claude",
+      "category": "text",
       "apiFormats": ["openai_chat", "openai_responses", "anthropic_messages"],
       "modalities": ["text", "image_input", "pdf_input"],
+      "inputModalities": ["text", "image", "pdf"],
+      "outputModalities": ["text"],
+      "capabilityTags": ["streaming", "tool_calling", "structured_output", "reasoning", "prompt_caching", "image_input", "pdf_input", "text_output"],
+      "taskTags": ["chat", "agent", "coding", "reasoning", "structured_output", "vision", "document_analysis"],
+      "traits": ["multimodal"],
+      "lifecycle": "stable",
+      "qualityTier": "standard",
+      "speedTier": "balanced",
       "features": {
         "streaming": true,
         "toolCalling": true,
