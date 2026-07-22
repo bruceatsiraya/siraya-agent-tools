@@ -36,9 +36,9 @@ export function renderModelCatalog(registry: SirayaRegistry): Response {
     <main>
       <header class="page-header">
         <div>
-          <p class="eyebrow">Daily model registry</p>
-          <h1>Model Catalog</h1>
-          <p class="lede">Models currently available through SIRAYA Model Router, classified by vendor, workload, modality, and agent capability.</p>
+          <p class="eyebrow">Model Router</p>
+          <h1>Models</h1>
+          <p class="lede">Explore every model available through SIRAYA, with normalized capabilities, tasks, modalities, and public upstream pricing.</p>
         </div>
         <div class="sync-panel">
           <span>Last synchronized</span>
@@ -53,34 +53,52 @@ export function renderModelCatalog(registry: SirayaRegistry): Response {
       <section class="stats" id="stats" aria-label="Catalog summary"></section>
       <section class="source-status" id="source-status" aria-label="Public pricing sources"></section>
 
-      <section class="catalog-controls" aria-label="Model filters">
-        <div class="search-wrap">
-          <label for="model-search">Search models</label>
-          <input id="model-search" type="search" placeholder="Model, vendor, family, capability" autocomplete="off">
-        </div>
-        <div class="select-wrap">
-          <label for="provider-filter">Vendor</label>
-          <select id="provider-filter"><option value="all">All vendors</option></select>
-        </div>
-        <div class="category-wrap">
-          <span class="control-label">Category</span>
-          <div class="segments" id="category-filter" role="group" aria-label="Model category"></div>
-        </div>
-        <fieldset class="feature-filter">
-          <legend>Capabilities</legend>
-          <label><input type="checkbox" value="tool_calling"> Tool use</label>
-          <label><input type="checkbox" value="reasoning"> Reasoning</label>
-          <label><input type="checkbox" value="structured_output"> Structured output</label>
-          <label><input type="checkbox" value="image_input"> Vision</label>
-        </fieldset>
-      </section>
+      <div class="model-browser">
+        <button class="filter-backdrop" id="filter-backdrop" type="button" aria-label="Close filters"></button>
+        <aside class="filter-rail" id="filter-rail" aria-label="Model filters">
+          <div class="filter-rail-heading">
+            <strong>Filters</strong>
+            <button class="filter-close" id="filter-close" type="button" aria-label="Close filters">x</button>
+          </div>
+          <div class="filter-section">
+            <span class="control-label">Category</span>
+            <div class="category-list" id="category-filter"></div>
+          </div>
+          <div class="filter-section">
+            <span class="control-label">Provider</span>
+            <div class="check-list" id="provider-filter"></div>
+          </div>
+          <div class="filter-section">
+            <span class="control-label">Capabilities</span>
+            <div class="check-list" id="capability-filter"></div>
+          </div>
+          <details class="filter-section filter-more" open>
+            <summary>Best-fit tasks</summary>
+            <div class="check-list" id="task-filter"></div>
+          </details>
+          <details class="filter-section filter-more">
+            <summary>Model traits</summary>
+            <div class="check-list" id="trait-filter"></div>
+          </details>
+          <button class="clear-all" id="clear-filters" type="button">Clear all filters</button>
+        </aside>
 
-      <div class="result-bar">
-        <strong id="result-count"></strong>
-        <button id="clear-filters" type="button">Clear filters</button>
+        <section class="catalog-results">
+          <div class="result-toolbar">
+            <div class="search-wrap">
+              <label class="sr-only" for="model-search">Search models</label>
+              <input id="model-search" type="search" placeholder="Search models, providers, tasks..." autocomplete="off">
+            </div>
+            <button class="filter-toggle" id="filter-toggle" type="button" aria-controls="filter-rail" aria-expanded="false">Filters <span id="filter-count">0</span></button>
+            <label class="sort-control" for="sort-models"><span>Sort</span><select id="sort-models"><option value="name">Name</option><option value="provider">Provider</option><option value="category">Category</option></select></label>
+          </div>
+          <div class="result-meta">
+            <strong id="result-count"></strong>
+            <div class="active-filters" id="active-filters"></div>
+          </div>
+          <div id="model-groups" aria-live="polite"></div>
+        </section>
       </div>
-
-      <div id="model-groups" aria-live="polite"></div>
 
       <section class="data-note">
         <strong>How to read this catalog</strong>
@@ -160,14 +178,22 @@ function catalogScript(): string {
       specialized: "Specialized", preview: "Preview", dated_snapshot: "Dated snapshot",
       content_policy_relaxed: "Relaxed content policy"
     };
-    const state = { query: "", provider: "all", category: "all", features: new Set() };
+    const state = {
+      query: "", category: "all", providers: new Set(), capabilities: new Set(),
+      tasks: new Set(), traits: new Set(), sort: "name"
+    };
 
     const search = document.getElementById("model-search");
-    const provider = document.getElementById("provider-filter");
     const categories = document.getElementById("category-filter");
-    const featureFilter = document.querySelector(".feature-filter");
+    const providerFilter = document.getElementById("provider-filter");
+    const capabilityFilter = document.getElementById("capability-filter");
+    const taskFilter = document.getElementById("task-filter");
+    const traitFilter = document.getElementById("trait-filter");
     const groups = document.getElementById("model-groups");
     const resultCount = document.getElementById("result-count");
+    const activeFilters = document.getElementById("active-filters");
+    const filterRail = document.getElementById("filter-rail");
+    const filterToggle = document.getElementById("filter-toggle");
     const refreshDialog = document.getElementById("refresh-dialog");
     const refreshForm = document.getElementById("refresh-form");
     const adminToken = document.getElementById("admin-token");
@@ -179,26 +205,23 @@ function catalogScript(): string {
 
     const providers = [...new Map(models.map(model => [model.provider, model.providerName || model.provider])).entries()]
       .sort((a, b) => String(a[1]).localeCompare(String(b[1])));
-    providers.forEach(([value, label]) => {
-      const option = document.createElement("option");
-      option.value = value;
-      option.textContent = label;
-      provider.append(option);
-    });
-
-    [{ value: "all", label: "All" }, ...categoryOrder.map(value => ({ value, label: categoryLabels[value] }))]
+    [{ value: "all", label: "All models" }, ...categoryOrder.map(value => ({ value, label: categoryLabels[value] }))]
       .forEach(({ value, label }) => {
         const button = document.createElement("button");
         button.type = "button";
         button.dataset.category = value;
-        button.textContent = label;
+        button.append(el("span", "", label), el("span", "filter-option-count", String(value === "all" ? models.length : models.filter(model => model.category === value).length)));
         button.className = value === "all" ? "active" : "";
         button.setAttribute("aria-pressed", String(value === "all"));
         categories.append(button);
       });
 
+    providers.forEach(([value, label]) => appendFilterOption(providerFilter, "providers", value, String(label), models.filter(model => model.provider === value).length));
+    appendTaxonomyOptions(capabilityFilter, "capabilities", "capabilityTags", featureLabels);
+    appendTaxonomyOptions(taskFilter, "tasks", "taskTags", taskLabels);
+    appendTaxonomyOptions(traitFilter, "traits", "traits", traitLabels);
+
     search.addEventListener("input", () => { state.query = search.value.trim().toLowerCase(); render(); });
-    provider.addEventListener("change", () => { state.provider = provider.value; render(); });
     categories.addEventListener("click", event => {
       const button = event.target.closest("button[data-category]");
       if (!button) return;
@@ -210,19 +233,24 @@ function catalogScript(): string {
       });
       render();
     });
-    featureFilter.addEventListener("change", event => {
-      if (event.target.checked) state.features.add(event.target.value);
-      else state.features.delete(event.target.value);
+    [providerFilter, capabilityFilter, taskFilter, traitFilter].forEach(container => container.addEventListener("change", event => {
+      const input = event.target.closest("input[data-state-key]");
+      if (!input) return;
+      const values = state[input.dataset.stateKey];
+      if (input.checked) values.add(input.value);
+      else values.delete(input.value);
       render();
-    });
+    }));
+    document.getElementById("sort-models").addEventListener("change", event => { state.sort = event.target.value; render(); });
     document.getElementById("clear-filters").addEventListener("click", () => {
       state.query = "";
-      state.provider = "all";
       state.category = "all";
-      state.features.clear();
+      state.providers.clear();
+      state.capabilities.clear();
+      state.tasks.clear();
+      state.traits.clear();
       search.value = "";
-      provider.value = "all";
-      featureFilter.querySelectorAll("input").forEach(input => { input.checked = false; });
+      document.querySelectorAll(".filter-rail input[type=checkbox]").forEach(input => { input.checked = false; });
       categories.querySelectorAll("button").forEach(button => {
         const active = button.dataset.category === "all";
         button.classList.toggle("active", active);
@@ -230,6 +258,17 @@ function catalogScript(): string {
       });
       render();
     });
+    activeFilters.addEventListener("click", event => {
+      const button = event.target.closest("button[data-filter-kind]");
+      if (!button) return;
+      if (button.dataset.filterKind === "category") state.category = "all";
+      else state[button.dataset.filterKind].delete(button.dataset.filterValue);
+      syncFilterControls();
+      render();
+    });
+    filterToggle.addEventListener("click", () => setFilterRail(true));
+    document.getElementById("filter-close").addEventListener("click", () => setFilterRail(false));
+    document.getElementById("filter-backdrop").addEventListener("click", () => setFilterRail(false));
     document.getElementById("refresh-registry").addEventListener("click", () => {
       refreshFeedback.textContent = "";
       refreshDialog.showModal();
@@ -258,6 +297,42 @@ function catalogScript(): string {
         confirm.disabled = false;
       }
     });
+
+    function appendTaxonomyOptions(container, stateKey, modelKey, labels) {
+      const counts = new Map();
+      models.forEach(model => (model[modelKey] || []).forEach(value => counts.set(value, (counts.get(value) || 0) + 1)));
+      [...counts.entries()]
+        .filter(([value]) => labels[value])
+        .sort((a, b) => b[1] - a[1] || labels[a[0]].localeCompare(labels[b[0]]))
+        .forEach(([value, count]) => appendFilterOption(container, stateKey, value, labels[value], count));
+    }
+
+    function appendFilterOption(container, stateKey, value, label, count) {
+      const row = el("label", "check-option");
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.value = value;
+      input.dataset.stateKey = stateKey;
+      row.append(input, el("span", "filter-option-name", label), el("span", "filter-option-count", String(count)));
+      container.append(row);
+    }
+
+    function setFilterRail(open) {
+      filterRail.classList.toggle("open", open);
+      document.body.classList.toggle("filters-open", open);
+      filterToggle.setAttribute("aria-expanded", String(open));
+    }
+
+    function syncFilterControls() {
+      categories.querySelectorAll("button").forEach(button => {
+        const active = button.dataset.category === state.category;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-pressed", String(active));
+      });
+      document.querySelectorAll("input[data-state-key]").forEach(input => {
+        input.checked = state[input.dataset.stateKey].has(input.value);
+      });
+    }
 
     function renderStats() {
       const counts = Object.fromEntries(categoryOrder.map(category => [category, models.filter(model => model.category === category).length]));
@@ -294,14 +369,21 @@ function catalogScript(): string {
       const traitText = (model.traits || []).map(key => traitLabels[key] || key).join(" ");
       const haystack = [model.id, model.providerName, model.provider, model.family, model.category, ...model.modalities, capabilityText, taskText, traitText].join(" ").toLowerCase();
       return (!state.query || haystack.includes(state.query))
-        && (state.provider === "all" || model.provider === state.provider)
+        && (!state.providers.size || state.providers.has(model.provider))
         && (state.category === "all" || model.category === state.category)
-        && [...state.features].every(feature => (model.capabilityTags || []).includes(feature));
+        && [...state.capabilities].every(value => (model.capabilityTags || []).includes(value))
+        && [...state.tasks].every(value => (model.taskTags || []).includes(value))
+        && [...state.traits].every(value => (model.traits || []).includes(value));
     }
 
     function render() {
-      const filtered = models.filter(matches);
+      const filtered = models.filter(matches).sort((a, b) => {
+        if (state.sort === "provider") return (a.providerName || a.provider).localeCompare(b.providerName || b.provider) || a.id.localeCompare(b.id);
+        if (state.sort === "category") return categoryOrder.indexOf(a.category) - categoryOrder.indexOf(b.category) || a.id.localeCompare(b.id);
+        return a.id.localeCompare(b.id);
+      });
       resultCount.textContent = filtered.length + (filtered.length === 1 ? " model" : " models");
+      renderActiveFilters();
       groups.replaceChildren();
 
       if (!filtered.length) {
@@ -323,6 +405,27 @@ function catalogScript(): string {
         section.append(list);
         groups.append(section);
       });
+    }
+
+    function renderActiveFilters() {
+      activeFilters.replaceChildren();
+      const entries = [];
+      if (state.category !== "all") entries.push(["category", state.category, categoryLabels[state.category]]);
+      state.providers.forEach(value => entries.push(["providers", value, providers.find(entry => entry[0] === value)?.[1] || value]));
+      state.capabilities.forEach(value => entries.push(["capabilities", value, featureLabels[value] || value]));
+      state.tasks.forEach(value => entries.push(["tasks", value, taskLabels[value] || value]));
+      state.traits.forEach(value => entries.push(["traits", value, traitLabels[value] || value]));
+      entries.forEach(([kind, value, label]) => {
+        const button = el("button", "active-filter", label + " x");
+        button.type = "button";
+        button.dataset.filterKind = kind;
+        button.dataset.filterValue = value;
+        button.setAttribute("aria-label", "Remove " + label + " filter");
+        activeFilters.append(button);
+      });
+      const count = entries.length;
+      document.getElementById("filter-count").textContent = String(count);
+      filterToggle.classList.toggle("has-filters", count > 0);
     }
 
     function renderModel(model) {
@@ -599,6 +702,102 @@ function catalogStyles(): string {
       .model-row summary > .chips { grid-column: 1 / -1; padding-left: 40px; }
       .model-detail { grid-template-columns: 1fr; padding: 18px 12px 22px; }
       .provider-mark { width: 30px; }
+    }
+
+    /* Model browser */
+    .shell { grid-template-columns: 220px minmax(0, 1fr); }
+    .sidebar { padding: 24px 18px; }
+    main { width: 100%; max-width: 1540px; padding: 30px 36px 72px; }
+    .page-header { align-items: center; padding-bottom: 20px; }
+    h1 { margin-bottom: 5px; font-size: 32px; }
+    .lede { max-width: 820px; font-size: 15px; }
+    .stats { display: flex; gap: 0; margin: 16px 0 0; border: 0; }
+    .stat { display: flex; gap: 6px; align-items: baseline; padding: 0 18px; border-right: 1px solid var(--line); }
+    .stat:first-child { padding-left: 0; }
+    .stat strong { font-size: 17px; }
+    .stat span { font-size: 12px; }
+    .source-status { margin: 8px 0 20px; }
+    .model-browser { position: relative; display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 620px; border-top: 1px solid var(--line); }
+    .filter-rail { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto; padding: 18px 20px 28px 0; border-right: 1px solid var(--line); background: #f8faf9; }
+    .filter-rail-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; font-size: 15px; }
+    .filter-close, .filter-backdrop { display: none; }
+    .filter-section { display: grid; gap: 7px; margin: 0; padding: 15px 0; border: 0; border-top: 1px solid var(--line); }
+    .filter-section:first-of-type { border-top: 0; }
+    .category-list, .check-list { display: grid; gap: 2px; }
+    .category-list button, .check-option { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; min-height: 32px; padding: 5px 8px; border: 0; border-radius: 5px; background: transparent; color: #46524d; text-align: left; cursor: pointer; }
+    .category-list button:hover, .check-option:hover { background: #edf2ef; color: var(--ink); }
+    .category-list button.active { background: #e1eeea; color: #096b64; font-weight: 750; }
+    .check-option { grid-template-columns: 16px minmax(0, 1fr) auto; gap: 8px; font-size: 13px; font-weight: 500; text-transform: none; }
+    .check-option input { width: 15px; height: 15px; margin: 0; accent-color: var(--teal); }
+    .filter-option-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .filter-option-count { color: #85908b; font-size: 11px; font-weight: 500; }
+    .filter-more summary { color: var(--muted); font-size: 12px; font-weight: 750; text-transform: uppercase; cursor: pointer; }
+    .filter-more[open] summary { margin-bottom: 5px; }
+    .clear-all { width: 100%; min-height: 34px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--teal); cursor: pointer; font-weight: 700; }
+    .catalog-results { min-width: 0; padding-left: 24px; }
+    .result-toolbar { position: sticky; top: 0; z-index: 3; display: grid; grid-template-columns: minmax(240px, 1fr) auto; gap: 12px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); background: rgba(248,250,249,.96); backdrop-filter: blur(8px); }
+    .search-wrap { position: relative; }
+    .search-wrap::before { content: ""; position: absolute; left: 13px; top: 13px; width: 12px; height: 12px; border: 1.5px solid #71807a; border-radius: 50%; }
+    .search-wrap::after { content: ""; position: absolute; left: 24px; top: 25px; width: 6px; height: 1.5px; background: #71807a; transform: rotate(45deg); }
+    input[type="search"] { height: 40px; padding: 0 12px 0 38px; background: #fff; }
+    .sort-control { display: flex; gap: 8px; align-items: center; text-transform: none; }
+    .sort-control select { width: 118px; height: 38px; }
+    .filter-toggle { display: none; }
+    .result-meta { display: flex; gap: 12px; align-items: center; min-height: 48px; }
+    .active-filters { display: flex; flex-wrap: wrap; gap: 5px; }
+    .active-filter { padding: 3px 8px; border: 1px solid #bcd2ca; border-radius: 5px; background: #edf5f2; color: #27665a; cursor: pointer; font-size: 11px; }
+    .model-section { margin-bottom: 22px; }
+    .section-heading { position: sticky; top: 69px; z-index: 2; min-height: 38px; margin: 0; padding: 7px 10px; border-bottom: 1px solid var(--line); background: #f8faf9; }
+    .section-heading h2 { font-size: 14px; }
+    .model-list { border-top: 0; }
+    .model-row summary { position: relative; grid-template-columns: minmax(220px, 1.25fr) minmax(110px, .55fr) 90px minmax(240px, 1fr); min-height: 56px; padding: 8px 32px 8px 10px; }
+    .model-row summary::after { content: "+"; position: absolute; right: 10px; top: 50%; color: #78847f; font-size: 18px; transform: translateY(-50%); }
+    .model-row[open] summary::after { content: "-"; }
+    .model-row summary > .chips { margin-right: -22px; }
+    .model-detail { grid-template-columns: minmax(240px, .8fr) minmax(260px, 1.2fr); padding: 18px 46px 22px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+    @media (max-width: 1100px) {
+      .model-row summary { grid-template-columns: minmax(220px, 1fr) 120px 90px; }
+      .model-row summary > .chips { grid-column: 1 / -1; margin: 0; padding-left: 40px; }
+    }
+    @media (max-width: 820px) {
+      .shell { display: block; }
+      .sidebar { position: static; height: auto; padding: 14px 18px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .brand { margin-bottom: 12px; }
+      .sidebar nav { display: flex; flex-wrap: nowrap; gap: 3px; overflow-x: auto; }
+      .sidebar nav a { flex: 0 0 auto; padding: 7px 9px; }
+      .status { display: none; }
+      main { padding: 24px 18px 56px; }
+      .model-browser { display: block; }
+      .filter-rail { position: fixed; z-index: 20; top: 0; bottom: 0; left: 0; width: min(330px, calc(100% - 44px)); max-height: none; padding: 20px; border-right: 1px solid var(--line); background: #fff; box-shadow: 12px 0 36px rgba(23,33,29,.2); transform: translateX(-105%); transition: transform .18s ease; }
+      .filter-rail.open { transform: translateX(0); }
+      .filter-close { display: grid; place-items: center; width: 30px; height: 30px; border: 0; background: transparent; cursor: pointer; }
+      .filter-backdrop { position: fixed; z-index: 19; inset: 0; width: 100%; height: 100%; border: 0; background: rgba(23,33,29,.32); }
+      .filters-open { overflow: hidden; }
+      .filters-open .filter-backdrop { display: block; }
+      .catalog-results { padding-left: 0; }
+      .result-toolbar { grid-template-columns: minmax(0, 1fr) auto auto; }
+      .filter-toggle { display: inline-flex; gap: 7px; align-items: center; height: 38px; padding: 0 11px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); cursor: pointer; font-weight: 700; }
+      .filter-toggle span { display: grid; place-items: center; min-width: 18px; height: 18px; border-radius: 9px; background: #e7eeeb; font-size: 10px; }
+      .filter-toggle.has-filters span { background: var(--teal); color: #fff; }
+    }
+    @media (max-width: 620px) {
+      main { padding: 20px 14px 48px; }
+      .page-header { grid-template-columns: 1fr; gap: 12px; align-items: start; }
+      .sync-panel { justify-items: start; }
+      .stats { flex-wrap: wrap; gap: 4px 0; }
+      .stat { padding: 0 10px; }
+      .stat:nth-child(n+4) { display: none; }
+      .source-status { display: grid; gap: 1px; }
+      .result-toolbar { grid-template-columns: minmax(0, 1fr) auto; }
+      .sort-control { display: none; }
+      .section-heading { top: 69px; }
+      .model-row summary { grid-template-columns: minmax(0, 1fr) auto; gap: 5px 8px; padding: 10px 6px; }
+      .model-row summary .vendor { grid-column: 1; padding-left: 40px; }
+      .model-row summary .category { grid-column: 2; grid-row: 1; margin-right: 22px; }
+      .model-row summary > .chips { grid-column: 1 / -1; padding-left: 40px; }
+      .model-detail { grid-template-columns: 1fr; padding: 16px 10px 20px; }
     }
   `;
 }
