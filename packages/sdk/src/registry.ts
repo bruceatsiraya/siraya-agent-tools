@@ -77,6 +77,7 @@ export function inferCapabilities(model: SirayaModel): SirayaModelCapability {
     family,
     category,
     documentationUrl: providerInfo.documentationUrl,
+    pricingUrl: providerInfo.pricingUrl,
     capabilitySource: "inferred",
     apiFormats: textLike
       ? ["openai_chat", "openai_responses", "anthropic_messages"]
@@ -207,13 +208,13 @@ function inferReasoning(family: SirayaModelCapability["family"], id: string): bo
   return false;
 }
 
-const PROVIDERS: Record<string, { name: string; documentationUrl: string }> = {
-  openai: { name: "OpenAI", documentationUrl: "https://platform.openai.com/docs/models" },
-  anthropic: { name: "Anthropic", documentationUrl: "https://docs.anthropic.com/en/docs/about-claude/models/overview" },
-  google: { name: "Google", documentationUrl: "https://ai.google.dev/gemini-api/docs/models" },
-  deepseek: { name: "DeepSeek", documentationUrl: "https://api-docs.deepseek.com/quick_start/pricing" },
-  xai: { name: "xAI", documentationUrl: "https://docs.x.ai/developers/models" },
-  alibaba: { name: "Alibaba Cloud", documentationUrl: "https://www.alibabacloud.com/help/en/model-studio/getting-started/models" },
+const PROVIDERS: Record<string, { name: string; documentationUrl: string; pricingUrl?: string }> = {
+  openai: { name: "OpenAI", documentationUrl: "https://platform.openai.com/docs/models", pricingUrl: "https://openai.com/api/pricing/" },
+  anthropic: { name: "Anthropic", documentationUrl: "https://docs.anthropic.com/en/docs/about-claude/models/overview", pricingUrl: "https://docs.anthropic.com/en/docs/about-claude/pricing" },
+  google: { name: "Google", documentationUrl: "https://ai.google.dev/gemini-api/docs/models", pricingUrl: "https://ai.google.dev/gemini-api/docs/pricing" },
+  deepseek: { name: "DeepSeek", documentationUrl: "https://api-docs.deepseek.com/quick_start/pricing", pricingUrl: "https://api-docs.deepseek.com/quick_start/pricing" },
+  xai: { name: "xAI", documentationUrl: "https://docs.x.ai/developers/models", pricingUrl: "https://docs.x.ai/developers/pricing" },
+  alibaba: { name: "Alibaba Cloud", documentationUrl: "https://www.alibabacloud.com/help/en/model-studio/getting-started/models", pricingUrl: "https://help.aliyun.com/en/model-studio/model-pricing" },
   moonshot: { name: "Moonshot AI", documentationUrl: "https://platform.moonshot.ai/docs/intro" },
   zhipu: { name: "Z.ai", documentationUrl: "https://docs.z.ai/guides/overview/models" },
   minimax: { name: "MiniMax", documentationUrl: "https://platform.minimax.io/docs/guides/models-intro" },

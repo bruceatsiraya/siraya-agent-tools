@@ -38,11 +38,11 @@ GET  /health
 GET  /registry
 GET  /models        # HTML catalog for browsers; full registry when requested as JSON
 GET  /api/models    # JSON model list
-POST /refresh
+POST /refresh       # protected manual refresh; also checks public pricing pages
 POST /mcp
 ```
 
-`/refresh` requires `Authorization: Bearer <ADMIN_TOKEN>` when `ADMIN_TOKEN` is configured.
+`/refresh` requires `Authorization: Bearer <ADMIN_TOKEN>` when `ADMIN_TOKEN` is configured. The catalog's **Refresh registry** button prompts for this token in the browser and sends it only for that request; it is never stored in the page or registry.
 
 ## MCP Client Configuration
 
@@ -145,7 +145,10 @@ The scheduled job:
 
 1. Calls `GET https://llm.siraya.ai/v1/models`.
 2. Builds the capability registry.
-3. Stores the latest registry in Cloudflare KV under the current versioned registry key.
+3. Checks fixed official public pricing pages where available and records source availability.
+4. Stores the latest registry in Cloudflare KV under the current versioned registry key.
+
+Public upstream pricing is shown only when the model ID can be matched conservatively to an official page. It is a reference, not the amount billed by SIRAYA Model Router; use SIRAYA billing for the actual charge.
 
 Manual refresh:
 

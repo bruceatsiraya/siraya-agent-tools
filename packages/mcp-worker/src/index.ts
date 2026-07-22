@@ -9,6 +9,7 @@ import {
 } from "@siraya/agent";
 import { renderDocs } from "./docs.js";
 import { renderModelCatalog } from "./catalog.js";
+import { enrichPublicInfo } from "./public-info.js";
 
 interface Env {
   SIRAYA_API_KEY?: string;
@@ -24,7 +25,7 @@ interface JsonRpcRequest {
   params?: Record<string, unknown>;
 }
 
-const REGISTRY_KEY = "registry:latest:v3";
+const REGISTRY_KEY = "registry:latest:v5";
 const DEFAULT_BASE_URL = "https://llm.siraya.ai/v1";
 
 export default {
@@ -163,7 +164,7 @@ async function refreshRegistry(env: Env, fallbackApiKey?: string): Promise<Siray
     throw new Error(`SIRAYA /models failed: ${response.status} ${await response.text()}`);
   }
   const payload = await response.json() as { data: SirayaModel[] };
-  const registry = buildRegistry(payload.data, `${baseUrl}/models`);
+  const registry = await enrichPublicInfo(buildRegistry(payload.data, `${baseUrl}/models`));
   await env.SIRAYA_REGISTRY.put(REGISTRY_KEY, JSON.stringify(registry), {
     metadata: { generatedAt: registry.generatedAt }
   });

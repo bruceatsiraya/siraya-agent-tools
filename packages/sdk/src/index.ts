@@ -12,6 +12,8 @@ export type {
   SirayaModel,
   SirayaModelCategory,
   SirayaModelCapability,
+  SirayaPricingQuote,
+  SirayaPublicSource,
   SirayaRegistry,
   SirayaTask,
   SirayaToolDefinition,

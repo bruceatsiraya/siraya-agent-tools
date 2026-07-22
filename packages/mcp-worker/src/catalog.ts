@@ -43,11 +43,15 @@ export function renderModelCatalog(registry: SirayaRegistry): Response {
         <div class="sync-panel">
           <span>Last synchronized</span>
           <strong id="sync-time">${escapeHtml(registry.generatedAt)}</strong>
-          <a href="/models?format=json">View JSON</a>
+          <div class="sync-actions">
+            <a href="/models?format=json">View JSON</a>
+            <button id="refresh-registry" type="button">Refresh registry</button>
+          </div>
         </div>
       </header>
 
       <section class="stats" id="stats" aria-label="Catalog summary"></section>
+      <section class="source-status" id="source-status" aria-label="Public pricing sources"></section>
 
       <section class="catalog-controls" aria-label="Model filters">
         <div class="search-wrap">
@@ -80,10 +84,30 @@ export function renderModelCatalog(registry: SirayaRegistry): Response {
 
       <section class="data-note">
         <strong>How to read this catalog</strong>
-        <p>Availability comes from SIRAYA's live <code>/v1/models</code> endpoint. Vendor, category, and capabilities are conservatively inferred from model IDs and public vendor documentation until SIRAYA exposes authoritative per-model capability metadata. Custom SIRAYA aliases may differ from the upstream vendor model.</p>
+        <p>Availability comes from SIRAYA's live <code>/v1/models</code> endpoint. Vendor, category, and capabilities are conservatively inferred from model IDs and public vendor documentation until SIRAYA exposes authoritative per-model capability metadata. Custom SIRAYA aliases may differ from the upstream vendor model. Upstream pricing is only a public reference; SIRAYA billing is authoritative for charges through this router.</p>
       </section>
     </main>
   </div>
+
+  <dialog id="refresh-dialog" aria-labelledby="refresh-title">
+    <form id="refresh-form" method="dialog">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">Administration</p>
+          <h2 id="refresh-title">Refresh model registry</h2>
+        </div>
+        <button id="close-refresh" class="icon-button" type="button" aria-label="Close refresh dialog">x</button>
+      </div>
+      <p>Fetch the current SIRAYA model list and re-check public pricing sources.</p>
+      <label for="admin-token">Admin token</label>
+      <input id="admin-token" type="password" autocomplete="off" required>
+      <p class="refresh-feedback" id="refresh-feedback" role="status"></p>
+      <div class="dialog-actions">
+        <button id="cancel-refresh" type="button">Cancel</button>
+        <button id="confirm-refresh" class="primary-action" type="submit">Refresh now</button>
+      </div>
+    </form>
+  </dialog>
 
   <script id="registry-data" type="application/json">${registryJson}</script>
   <script>${catalogScript()}</script>
@@ -130,6 +154,10 @@ function catalogScript(): string {
     const featureFilter = document.querySelector(".feature-filter");
     const groups = document.getElementById("model-groups");
     const resultCount = document.getElementById("result-count");
+    const refreshDialog = document.getElementById("refresh-dialog");
+    const refreshForm = document.getElementById("refresh-form");
+    const adminToken = document.getElementById("admin-token");
+    const refreshFeedback = document.getElementById("refresh-feedback");
 
     document.getElementById("sync-time").textContent = new Intl.DateTimeFormat(undefined, {
       dateStyle: "medium", timeStyle: "short"
@@ -188,6 +216,34 @@ function catalogScript(): string {
       });
       render();
     });
+    document.getElementById("refresh-registry").addEventListener("click", () => {
+      refreshFeedback.textContent = "";
+      refreshDialog.showModal();
+      adminToken.focus();
+    });
+    document.getElementById("close-refresh").addEventListener("click", () => refreshDialog.close());
+    document.getElementById("cancel-refresh").addEventListener("click", () => refreshDialog.close());
+    refreshForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      const token = adminToken.value;
+      if (!token) return;
+      const confirm = document.getElementById("confirm-refresh");
+      confirm.disabled = true;
+      refreshFeedback.textContent = "Refreshing model and public pricing data...";
+      try {
+        const response = await fetch("/refresh", {
+          method: "POST",
+          headers: { authorization: "Bearer " + token }
+        });
+        if (!response.ok) throw new Error(response.status === 401 ? "The admin token was not accepted." : "Refresh failed. Please try again.");
+        adminToken.value = "";
+        window.location.reload();
+      } catch (error) {
+        refreshFeedback.textContent = error instanceof Error ? error.message : "Refresh failed. Please try again.";
+      } finally {
+        confirm.disabled = false;
+      }
+    });
 
     function renderStats() {
       const counts = Object.fromEntries(categoryOrder.map(category => [category, models.filter(model => model.category === category).length]));
@@ -204,6 +260,18 @@ function catalogScript(): string {
         item.append(el("strong", "", String(value)), el("span", "", label));
         return item;
       }));
+    }
+
+    function renderSourceStatus() {
+      const sources = registry.publicSources || [];
+      if (!sources.length) return;
+      const verified = sources.filter(source => source.status === "verified");
+      const quotes = sources.reduce((total, source) => total + source.parsedQuotes, 0);
+      const section = document.getElementById("source-status");
+      section.replaceChildren(
+        el("strong", "", verified.length + " of " + sources.length + " official pricing sources checked"),
+        el("span", "", quotes ? quotes + " exact upstream model prices matched" : "Pricing links are available where exact model prices cannot be matched automatically.")
+      );
     }
 
     function matches(model) {
@@ -265,6 +333,9 @@ function catalogScript(): string {
       parameterBlock.append(el("strong", "detail-label", "Known parameters"), el("p", "parameter-list", model.supportedParameters.join(", ")));
       body.append(parameterBlock);
 
+      const pricingBlock = renderPricing(model);
+      if (pricingBlock) body.append(pricingBlock);
+
       if (model.notes && model.notes.length) {
         const note = el("p", "model-note", model.notes.join(" "));
         body.append(note);
@@ -278,6 +349,37 @@ function catalogScript(): string {
       }
       details.append(body);
       return details;
+    }
+
+    function renderPricing(model) {
+      if (!model.pricing && !model.pricingUrl) return null;
+      const block = el("div", "detail-block pricing-block");
+      block.append(el("strong", "detail-label", "Official upstream pricing"));
+      if (model.pricing) {
+        const lines = [];
+        if (model.pricing.input !== undefined) lines.push("Input " + formatPrice(model.pricing.input, model.pricing));
+        if (model.pricing.cachedInput !== undefined) lines.push("Cached input " + formatPrice(model.pricing.cachedInput, model.pricing));
+        if (model.pricing.output !== undefined) lines.push("Output " + formatPrice(model.pricing.output, model.pricing));
+        block.append(el("p", "price-list", lines.join(" | ")));
+        block.append(el("p", "pricing-note", "Reference only. SIRAYA router billing may differ."));
+        const source = el("a", "docs-link", "Official pricing source");
+        source.href = model.pricing.sourceUrl;
+        source.target = "_blank";
+        source.rel = "noreferrer";
+        block.append(source);
+      } else {
+        block.append(el("p", "pricing-note", "An official pricing page is available, but an exact price was not automatically matched for this model."));
+        const source = el("a", "docs-link", "Open official pricing page");
+        source.href = model.pricingUrl;
+        source.target = "_blank";
+        source.rel = "noreferrer";
+        block.append(source);
+      }
+      return block;
+    }
+
+    function formatPrice(value, pricing) {
+      return pricing.currency + " $" + value + " " + pricing.unit;
     }
 
     function providerMark(model) {
@@ -313,6 +415,7 @@ function catalogScript(): string {
     }
 
     renderStats();
+    renderSourceStatus();
     render();
   `;
 }
@@ -354,13 +457,17 @@ function catalogStyles(): string {
     .lede { max-width: 760px; margin: 0; color: var(--muted); font-size: 17px; }
     .sync-panel { display: grid; justify-items: end; gap: 3px; color: var(--muted); font-size: 13px; }
     .sync-panel strong { color: var(--ink); }
-    .sync-panel a { color: var(--teal); font-weight: 700; }
+    .sync-actions { display: flex; gap: 12px; align-items: center; }
+    .sync-panel a, .sync-panel button { color: var(--teal); font-weight: 700; }
+    .sync-panel button { padding: 0; border: 0; background: transparent; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
     .stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: 26px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
     .stat { padding: 17px 18px; border-right: 1px solid var(--line); }
     .stat:last-child { border-right: 0; }
     .stat strong, .stat span { display: block; }
     .stat strong { font-size: 25px; line-height: 1.2; }
     .stat span { color: var(--muted); font-size: 13px; }
+    .source-status { display: flex; gap: 9px; align-items: baseline; margin: -10px 0 24px; color: var(--muted); font-size: 13px; }
+    .source-status strong { color: var(--ink); }
     .catalog-controls { display: grid; grid-template-columns: minmax(250px, 1.3fr) minmax(180px, .7fr); gap: 18px 22px; padding: 20px 0 24px; border-bottom: 1px solid var(--line); }
     label, .control-label, legend { color: var(--muted); font-size: 12px; font-weight: 750; text-transform: uppercase; }
     .search-wrap, .select-wrap { display: grid; gap: 6px; }
@@ -411,13 +518,28 @@ function catalogStyles(): string {
     dd { margin: 0; overflow-wrap: anywhere; }
     .detail-block { display: grid; align-content: start; gap: 8px; }
     .detail-label { font-size: 13px; }
-    .parameter-list, .model-note { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+    .parameter-list, .model-note, .price-list, .pricing-note { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
     .model-note { padding-left: 10px; border-left: 3px solid #d8bd83; }
     .docs-link { justify-self: start; color: var(--teal); font-weight: 750; }
     .empty { padding: 42px 20px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: center; }
     .empty p { margin: 5px 0 0; color: var(--muted); }
     .data-note { margin-top: 46px; padding-top: 20px; border-top: 1px solid var(--line); }
     .data-note p { max-width: 900px; margin: 6px 0 0; color: var(--muted); }
+    dialog { width: min(460px, calc(100% - 32px)); padding: 0; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); box-shadow: 0 20px 60px rgba(21, 38, 31, .2); }
+    dialog::backdrop { background: rgba(23, 33, 29, .38); }
+    dialog form { display: grid; gap: 14px; padding: 24px; }
+    .dialog-heading { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+    .dialog-heading h2 { margin-top: -2px; }
+    dialog p { margin: 0; color: var(--muted); }
+    dialog label { display: grid; gap: 6px; }
+    dialog input { height: 42px; padding: 0 12px; border: 1px solid #bdc9c3; border-radius: 7px; }
+    .icon-button { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--muted); cursor: pointer; }
+    .icon-button:hover { background: var(--wash); color: var(--ink); }
+    .refresh-feedback { min-height: 22px; font-size: 13px; }
+    .dialog-actions { display: flex; justify-content: end; gap: 10px; margin-top: 4px; }
+    .dialog-actions button { min-height: 38px; padding: 0 13px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); cursor: pointer; font-weight: 700; }
+    .dialog-actions .primary-action { border-color: var(--teal); background: var(--teal); color: #fff; }
+    .dialog-actions button:disabled { cursor: wait; opacity: .7; }
     code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
     @media (max-width: 980px) {
       .shell { display: block; }
@@ -431,6 +553,7 @@ function catalogStyles(): string {
       main { padding: 30px 16px 56px; }
       .page-header { grid-template-columns: 1fr; align-items: start; }
       .sync-panel { justify-items: start; }
+      .source-status { display: grid; gap: 2px; }
       h1 { font-size: 34px; }
       .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .stat { border-bottom: 1px solid var(--line); }

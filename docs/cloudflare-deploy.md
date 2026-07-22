@@ -57,7 +57,7 @@ npx wrangler@latest secret put SIRAYA_API_KEY --config packages/mcp-worker/wrang
 npx wrangler@latest secret put ADMIN_TOKEN --config packages/mcp-worker/wrangler.toml
 ```
 
-The Worker `SIRAYA_API_KEY` is a dedicated registry-sync key used only by scheduled and manual refresh. `ADMIN_TOKEN` protects manual refresh. Each agent supplies its own SIRAYA API key for model invocation.
+The Worker `SIRAYA_API_KEY` is a dedicated registry-sync key used only by scheduled and manual refresh. `ADMIN_TOKEN` protects manual refresh, including the catalog's browser refresh button. Each agent supplies its own SIRAYA API key for model invocation.
 
 On Windows PowerShell, use `npx.cmd` if `npx.ps1` is blocked:
 

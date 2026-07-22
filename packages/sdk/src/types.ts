@@ -23,6 +23,28 @@ export interface SirayaModel {
   [key: string]: unknown;
 }
 
+export interface SirayaPricingQuote {
+  source: "official_public";
+  sourceUrl: string;
+  observedAt: string;
+  currency: "USD" | "CNY";
+  unit: string;
+  input?: number;
+  cachedInput?: number;
+  output?: number;
+  note?: string;
+}
+
+export interface SirayaPublicSource {
+  provider: string;
+  providerName: string;
+  url: string;
+  status: "verified" | "unavailable" | "not_checked";
+  checkedAt: string;
+  parsedQuotes: number;
+  note?: string;
+}
+
 export interface SirayaModelCapability {
   id: string;
   provider?: string;
@@ -30,6 +52,8 @@ export interface SirayaModelCapability {
   family: "gpt" | "claude" | "gemini" | "deepseek" | "grok" | "qwen" | "kimi" | "glm" | "minimax" | "seed" | "image" | "video" | "audio" | "embedding" | "rerank" | "other";
   category: SirayaModelCategory;
   documentationUrl?: string;
+  pricingUrl?: string;
+  pricing?: SirayaPricingQuote;
   capabilitySource: "declared" | "inferred";
   apiFormats: SirayaApiFormat[];
   modalities: string[];
@@ -57,6 +81,7 @@ export interface SirayaRegistry {
   generatedAt: string;
   source: string;
   models: SirayaModelCapability[];
+  publicSources?: SirayaPublicSource[];
 }
 
 export interface SirayaClientOptions {
