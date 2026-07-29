@@ -27,6 +27,8 @@ The server exposes these MCP tools:
 | `siraya_validate_request` | Warn when request parameters may be dropped or ignored. |
 | `siraya_chat_completion` | Call `/v1/chat/completions`. |
 | `siraya_responses` | Call `/v1/responses`. |
+| `siraya_chat_completion_stream` | Stream `/v1/chat/completions` deltas as MCP progress notifications. |
+| `siraya_responses_stream` | Stream `/v1/responses` deltas as MCP progress notifications. |
 | `siraya_generate_image` | Call `/v1/images/generations`. |
 | `siraya_generate_video` | Call `/v1/videos/generations`. |
 
@@ -41,6 +43,8 @@ GET  /models        # HTML catalog for browsers; full registry when requested as
 GET  /api/models    # JSON model list
 POST /refresh       # protected manual refresh; also checks public pricing pages
 POST /mcp
+POST /stream/chat/completions
+POST /stream/responses
 ```
 
 `/refresh` requires `Authorization: Bearer <ADMIN_TOKEN>` when `ADMIN_TOKEN` is configured. The catalog's **Refresh registry** button prompts for this token in the browser and sends it only for that request; it is never stored in the page or registry.
@@ -152,6 +156,57 @@ curl https://siraya-mcp.bruceatsiraya.xyz/mcp \
     }
   }'
 ```
+
+## Token Streaming
+
+For MCP clients that support Streamable HTTP SSE and display
+`notifications/progress`, call a streaming tool and include a progress token in
+the request metadata:
+
+```bash
+curl -N https://siraya-mcp.bruceatsiraya.xyz/mcp \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <AGENT_SIRAYA_API_KEY>" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 5,
+    "method": "tools/call",
+    "params": {
+      "name": "siraya_chat_completion_stream",
+      "_meta": { "progressToken": "answer-5" },
+      "arguments": {
+        "request": {
+          "model": "deepseek-v4-flash",
+          "messages": [
+            { "role": "user", "content": "Explain model routing in three sentences." }
+          ]
+        }
+      }
+    }
+  }'
+```
+
+The HTTP response stays open as `text/event-stream`. Each generated text delta
+is sent in a standard MCP `notifications/progress` message. The final SSE
+message is the normal JSON-RPC `tools/call` result containing the complete text.
+
+MCP clients decide how progress notifications are presented. Clients that do
+not expose progress text may only show the final tool result. For guaranteed raw
+token SSE, use the direct proxy:
+
+```bash
+curl -N https://siraya-mcp.bruceatsiraya.xyz/stream/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <AGENT_SIRAYA_API_KEY>" \
+  -d '{
+    "model": "deepseek-v4-flash",
+    "messages": [{ "role": "user", "content": "Hello" }]
+  }'
+```
+
+The Worker forces `stream: true` for streaming routes and forwards the upstream
+SSE body without calling `text()`, `json()`, or otherwise buffering it.
 
 ## Security Notes
 

@@ -169,6 +169,8 @@ console.log(result.getText());</code></pre>
             ${toolRow("siraya_validate_request", "Warn when request parameters may be dropped or ignored.")}
             ${toolRow("siraya_chat_completion", "Call /v1/chat/completions.")}
             ${toolRow("siraya_responses", "Call /v1/responses.")}
+            ${toolRow("siraya_chat_completion_stream", "Stream chat token deltas through MCP progress notifications.")}
+            ${toolRow("siraya_responses_stream", "Stream Responses API deltas through MCP progress notifications.")}
             ${toolRow("siraya_generate_image", "Call /v1/images/generations.")}
             ${toolRow("siraya_generate_video", "Call /v1/videos/generations.")}
           </tbody>
@@ -187,6 +189,25 @@ console.log(result.getText());</code></pre>
 }</code></pre>
         <p>Give every agent its own SIRAYA API key. The Worker forwards that key for model calls and never stores it. Discovery remains available from the shared daily registry.</p>
       `)}
+      ${section("Token Streaming", `
+        <p>Use <code>siraya_chat_completion_stream</code> or <code>siraya_responses_stream</code> with a request <code>_meta.progressToken</code>. The Worker forwards each upstream SSE text delta as a standard MCP <code>notifications/progress</code> message, then sends the complete tool result.</p>
+        <pre><code>{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "tools/call",
+  "params": {
+    "name": "siraya_chat_completion_stream",
+    "_meta": { "progressToken": "answer-5" },
+    "arguments": {
+      "request": {
+        "model": "deepseek-v4-flash",
+        "messages": [{ "role": "user", "content": "Hello" }]
+      }
+    }
+  }
+}</code></pre>
+        <p>MCP clients control how progress is displayed. For guaranteed raw SSE, post the same request body to <code>/stream/chat/completions</code> or <code>/stream/responses</code> with the agent's Bearer key.</p>
+      `)}
       ${section("Raw MCP Checks", `
         <pre><code>curl https://siraya-mcp.bruceatsiraya.xyz/mcp \\
   -H "Content-Type: application/json" \\
@@ -200,6 +221,8 @@ console.log(result.getText());</code></pre>
           <code>GET /api/models</code>
           <code>POST /refresh</code>
           <code>POST /mcp</code>
+          <code>POST /stream/chat/completions</code>
+          <code>POST /stream/responses</code>
         </div>
       `)}
     `

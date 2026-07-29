@@ -47,6 +47,12 @@ export default {
     if (url.pathname === "/models" && request.method === "GET") return json(await getRegistry(env));
     if (url.pathname === "/api/models" && request.method === "GET") return json({ data: (await getRegistry(env)).models });
     if (url.pathname === "/refresh" && request.method === "POST") return refreshFromHttp(request, env);
+    if (url.pathname === "/stream/chat/completions" && request.method === "POST") {
+      return proxySirayaSse(request, env, "/chat/completions");
+    }
+    if (url.pathname === "/stream/responses" && request.method === "POST") {
+      return proxySirayaSse(request, env, "/responses");
+    }
     if (url.pathname === "/mcp" && request.method === "POST") return handleMcp(request, env);
     return json({ error: "not_found" }, 404);
   },
@@ -64,6 +70,10 @@ function wantsHtml(request: Request, url: URL): boolean {
 async function handleMcp(request: Request, env: Env): Promise<Response> {
   const body = await request.json() as JsonRpcRequest | JsonRpcRequest[];
   const agentApiKey = bearerToken(request);
+  if (!Array.isArray(body) && isStreamingToolCall(body)) {
+    if (!agentApiKey) return json(rpcError(body.id, -32001, "SIRAYA_API_KEY is required."), 401);
+    return streamMcpToolCall(body, env, agentApiKey);
+  }
   if (Array.isArray(body)) {
     const results = await Promise.all(body.map((item) => dispatchMcp(item, env, agentApiKey)));
     return json(results.filter(Boolean));
@@ -147,6 +157,12 @@ async function callTool(
   if (name === "siraya_responses") {
     return sirayaPost(env, "/responses", asRecord(args.request), requireAgentApiKey(agentApiKey));
   }
+  if (name === "siraya_chat_completion_stream") {
+    return sirayaPost(env, "/chat/completions", { ...asRecord(args.request), stream: false }, requireAgentApiKey(agentApiKey));
+  }
+  if (name === "siraya_responses_stream") {
+    return sirayaPost(env, "/responses", { ...asRecord(args.request), stream: false }, requireAgentApiKey(agentApiKey));
+  }
   if (name === "siraya_generate_image") {
     return sirayaPost(env, "/images/generations", asRecord(args.request), requireAgentApiKey(agentApiKey));
   }
@@ -225,6 +241,174 @@ async function sirayaPost(
   return body;
 }
 
+async function proxySirayaSse(request: Request, env: Env, path: string): Promise<Response> {
+  const apiKey = bearerToken(request);
+  if (!apiKey) return json({ error: "unauthorized", message: "SIRAYA_API_KEY is required." }, 401);
+  const body = { ...asRecord(await request.json()), stream: true };
+  const upstream = await fetch(`${trimRight(env.SIRAYA_BASE_URL ?? DEFAULT_BASE_URL, "/")}${path}`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      accept: "text/event-stream",
+      "content-type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+  if (!upstream.ok || !upstream.body) {
+    const message = await upstream.text();
+    return json({ error: "siraya_stream_failed", status: upstream.status, message }, upstream.status);
+  }
+  return cors(new Response(upstream.body, {
+    status: upstream.status,
+    headers: sseHeaders()
+  }));
+}
+
+function isStreamingToolCall(request: JsonRpcRequest): boolean {
+  if (request.method !== "tools/call") return false;
+  const name = String(request.params?.name ?? "");
+  return name === "siraya_chat_completion_stream" || name === "siraya_responses_stream";
+}
+
+async function streamMcpToolCall(request: JsonRpcRequest, env: Env, apiKey: string): Promise<Response> {
+  const name = String(request.params?.name ?? "");
+  const args = asRecord(request.params?.arguments);
+  const modelRequest = { ...asRecord(args.request), stream: true };
+  const path = name === "siraya_responses_stream" ? "/responses" : "/chat/completions";
+  const upstream = await fetch(`${trimRight(env.SIRAYA_BASE_URL ?? DEFAULT_BASE_URL, "/")}${path}`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      accept: "text/event-stream",
+      "content-type": "application/json"
+    },
+    body: JSON.stringify(modelRequest)
+  });
+
+  if (!upstream.ok || !upstream.body) {
+    const message = await upstream.text();
+    return json(rpcError(request.id, -32000, `SIRAYA ${path} failed: ${upstream.status} ${message}`));
+  }
+
+  const progressToken = asRecord(request.params?._meta).progressToken;
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  const reader = upstream.body.getReader();
+  let buffer = "";
+  let text = "";
+  let sequence = 0;
+  let completed = false;
+
+  const stream = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      if (completed) return;
+      try {
+        const chunk = await reader.read();
+        if (chunk.done) {
+          flushSseBuffer();
+          finish();
+          return;
+        }
+        buffer += decoder.decode(chunk.value, { stream: true });
+        drainSseFrames();
+      } catch (error) {
+        controller.enqueue(encodeSse(rpcError(
+          request.id,
+          -32000,
+          error instanceof Error ? error.message : String(error)
+        )));
+        completed = true;
+        controller.close();
+      }
+
+      function drainSseFrames(): void {
+        const frames = buffer.split(/\r?\n\r?\n/);
+        buffer = frames.pop() ?? "";
+        frames.forEach(processFrame);
+      }
+
+      function flushSseBuffer(): void {
+        buffer += decoder.decode();
+        if (buffer.trim()) processFrame(buffer);
+        buffer = "";
+      }
+
+      function processFrame(frame: string): void {
+        if (completed) return;
+        const payload = frame
+          .split(/\r?\n/)
+          .filter(line => line.startsWith("data:"))
+          .map(line => line.slice(5).trimStart())
+          .join("\n");
+        if (!payload) return;
+        if (payload === "[DONE]") {
+          finish();
+          return;
+        }
+        const event = safeJson(payload);
+        const delta = extractStreamText(event);
+        if (!delta) return;
+        text += delta;
+        sequence += 1;
+        if (typeof progressToken === "string" || typeof progressToken === "number") {
+          controller.enqueue(encodeSse({
+            jsonrpc: "2.0",
+            method: "notifications/progress",
+            params: { progressToken, progress: sequence, message: delta }
+          }));
+        }
+      }
+
+      function finish(): void {
+        if (completed) return;
+        completed = true;
+        controller.enqueue(encodeSse(rpcResult(request.id, {
+          content: [{ type: "text", text }],
+          structuredContent: { text, streamed: true, events: sequence },
+          isError: false
+        })));
+        controller.close();
+      }
+    },
+    async cancel(reason) {
+      completed = true;
+      await reader.cancel(reason);
+    }
+  });
+
+  return cors(new Response(stream, { headers: sseHeaders() }));
+}
+
+function extractStreamText(value: unknown): string {
+  const event = asRecord(value);
+  if (typeof event.delta === "string") return event.delta;
+  if (typeof event.output_text === "string") return event.output_text;
+  const choices = event.choices;
+  if (!Array.isArray(choices)) return "";
+  return choices
+    .map(choice => {
+      const delta = asRecord(asRecord(choice).delta);
+      if (typeof delta.content === "string") return delta.content;
+      if (!Array.isArray(delta.content)) return "";
+      return delta.content
+        .map(part => typeof asRecord(part).text === "string" ? String(asRecord(part).text) : "")
+        .join("");
+    })
+    .join("");
+}
+
+function encodeSse(message: Record<string, unknown>): Uint8Array {
+  return new TextEncoder().encode(`event: message\ndata: ${JSON.stringify(message)}\n\n`);
+}
+
+function sseHeaders(): Headers {
+  return new Headers({
+    "content-type": "text/event-stream; charset=utf-8",
+    "cache-control": "no-cache, no-transform",
+    "x-accel-buffering": "no"
+  });
+}
+
 function toolList(): Array<Record<string, unknown>> {
   return [
     {
@@ -292,6 +476,8 @@ function toolList(): Array<Record<string, unknown>> {
     },
     rawCallTool("siraya_chat_completion", "Call SIRAYA /v1/chat/completions."),
     rawCallTool("siraya_responses", "Call SIRAYA /v1/responses."),
+    rawCallTool("siraya_chat_completion_stream", "Stream SIRAYA /v1/chat/completions token deltas through MCP progress notifications."),
+    rawCallTool("siraya_responses_stream", "Stream SIRAYA /v1/responses token deltas through MCP progress notifications."),
     rawCallTool("siraya_generate_image", "Call SIRAYA /v1/images/generations."),
     rawCallTool("siraya_generate_video", "Call SIRAYA /v1/videos/generations.")
   ];
