@@ -30,13 +30,12 @@ raw SIRAYA payload remain read-only.
 
 The **Research model** action:
 
-1. Tries SIRAYA Tavily search.
-2. Uses direct Tavily when `TAVILY_API_KEY` is configured.
-3. Falls back to public Bing RSS and DuckDuckGo search results.
-4. Fetches public page text.
-5. Calls the configured SIRAYA enrichment model for strict JSON classification.
-6. Validates every candidate against the Registry schema.
-7. Stores the result as pending until an administrator approves or rejects it.
+1. Searches public Bing RSS results.
+2. Falls back to DuckDuckGo when Bing returns no usable sources.
+3. Fetches public page text.
+4. Calls the configured SIRAYA enrichment model for strict JSON classification.
+5. Validates every candidate against the Registry schema.
+6. Stores the result as pending until an administrator approves or rejects it.
 
 The default analysis model is configured through `SIRAYA_ENRICHMENT_MODEL`.
 Search and analysis use `SIRAYA_ENRICHMENT_API_KEY` when present and otherwise

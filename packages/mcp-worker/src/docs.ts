@@ -302,7 +302,7 @@ GET /v1/models?include_capabilities=true</code></pre>
       `)}
       ${section("Public Web Research", `
         <p><strong>Research model</strong> searches public pages, fetches source text, and sends the evidence to a SIRAYA model for strict JSON classification. Results remain pending until an administrator approves or rejects them.</p>
-        <p>The search provider order is SIRAYA Tavily, optional direct Tavily, Bing RSS, then DuckDuckGo. Invalid enum values and malformed pricing are discarded before a candidate can be approved.</p>
+        <p>The search provider order is Bing RSS followed by DuckDuckGo. Invalid enum values and malformed pricing are discarded before a candidate can be approved.</p>
       `)}
       ${section("Storage And Audit", `
         <table><tbody>

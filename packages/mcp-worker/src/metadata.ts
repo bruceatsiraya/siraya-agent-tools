@@ -9,7 +9,6 @@ export interface MetadataEnv {
   SIRAYA_ENRICHMENT_API_KEY?: string;
   SIRAYA_BASE_URL?: string;
   SIRAYA_ENRICHMENT_MODEL?: string;
-  TAVILY_API_KEY?: string;
   SIRAYA_METADATA: D1Database;
 }
 
@@ -144,7 +143,7 @@ export async function researchModel(
   const query = `\"${model.id}\" AI model provider capabilities pricing documentation`;
   const now = new Date().toISOString();
   try {
-    const search = await searchPublicWeb(env, baseUrl, apiKey, query);
+    const search = await searchPublicWeb(query);
     const sources = search.sources;
     const analysisModel = env.SIRAYA_ENRICHMENT_MODEL ?? "deepseek-v4-pro";
     const completionResponse = await fetch(`${baseUrl}/chat/completions`, {
@@ -188,51 +187,12 @@ export async function researchModel(
   }
 }
 
-async function searchPublicWeb(
-  env: MetadataEnv,
-  baseUrl: string,
-  sirayaApiKey: string,
-  query: string
-): Promise<{ provider: string; sources: Record<string, unknown>[] }> {
-  const sirayaResponse = await fetch(`${baseUrl}/tavily`, {
-    method: "POST",
-    headers: authHeaders(sirayaApiKey),
-    body: JSON.stringify({
-      model: "tavily-search", query, search_depth: "advanced", max_results: 6,
-      include_answer: true, include_raw_content: true
-    })
-  });
-  if (sirayaResponse.ok) {
-    const search = asRecord(await sirayaResponse.json());
-    return {
-      provider: "siraya_tavily",
-      sources: Array.isArray(search.results) ? search.results.slice(0, 6).map(sourceSummary) : []
-    };
-  }
-
-  if (env.TAVILY_API_KEY) {
-    const directResponse = await fetch("https://api.tavily.com/search", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        api_key: env.TAVILY_API_KEY, query, search_depth: "advanced", max_results: 6,
-        include_answer: true, include_raw_content: true
-      })
-    });
-    if (directResponse.ok) {
-      const search = asRecord(await directResponse.json());
-      return {
-        provider: "tavily_direct",
-        sources: Array.isArray(search.results) ? search.results.slice(0, 6).map(sourceSummary) : []
-      };
-    }
-  }
-
+async function searchPublicWeb(query: string): Promise<{ provider: string; sources: Record<string, unknown>[] }> {
   const bingSources = await bingRssSearch(query);
   if (bingSources.length) return { provider: "bing_rss_fallback", sources: bingSources };
   const sources = await duckDuckGoSearch(query);
   if (!sources.length) {
-    throw new Error(`Public search failed. SIRAYA Tavily returned ${sirayaResponse.status}, and the fallback returned no results.`);
+    throw new Error("Public search returned no results from Bing RSS or DuckDuckGo.");
   }
   return { provider: "duckduckgo_fallback", sources };
 }
@@ -446,14 +406,6 @@ function formatResearchRow(row: ResearchRow): Record<string, unknown> {
     candidate: parseRecord(row.candidate_json ?? "{}"), evidence: parseJson(row.evidence_json ?? "[]"),
     confidence: row.confidence, analysisModel: row.analysis_model, error: row.error,
     createdAt: row.created_at, reviewedAt: row.reviewed_at
-  };
-}
-
-function sourceSummary(value: unknown): Record<string, unknown> {
-  const source = asRecord(value);
-  return {
-    title: source.title, url: source.url, score: source.score,
-    content: String(source.raw_content ?? source.content ?? "").slice(0, 12000)
   };
 }
 

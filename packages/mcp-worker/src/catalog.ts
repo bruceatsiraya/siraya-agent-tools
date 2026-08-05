@@ -158,7 +158,7 @@ export function renderModelCatalog(registry: SirayaRegistry): Response {
       </section>
       <section class="metadata-panel" data-metadata-panel="research">
         <div class="research-toolbar">
-          <div><strong>Public web research</strong><p>Search with SIRAYA Tavily, then use a SIRAYA model to produce field-level suggestions with evidence.</p></div>
+          <div><strong>Public web research</strong><p>Search public sources, then use a SIRAYA model to produce field-level suggestions with evidence.</p></div>
           <button id="research-model" class="primary-action" type="button">Research model</button>
         </div>
         <div id="research-results" class="research-results"></div>
