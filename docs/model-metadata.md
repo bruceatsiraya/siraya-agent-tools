@@ -16,8 +16,8 @@ page all read that same compiled registry.
 ## Edit Fields
 
 1. Open `https://siraya-mcp.bruceatsiraya.xyz/models`.
-2. Expand a model and select **Edit metadata**.
-3. Enter `ADMIN_TOKEN` and select **Load**.
+2. Open `/admin` and sign in with your administration username and password.
+3. Select **Manage models**, expand a model, and select **Edit metadata**.
 4. Enable **Manual** only for fields that should override inference.
 5. Save the changes.
 
@@ -43,7 +43,8 @@ fall back to the dedicated registry-sync `SIRAYA_API_KEY`.
 
 ## Admin API
 
-All routes require `Authorization: Bearer <ADMIN_TOKEN>`.
+Browser administration uses an encrypted, HttpOnly session cookie created at `/admin`.
+`Authorization: Bearer <ADMIN_TOKEN>` remains available only as an emergency CLI fallback.
 
 ```text
 GET    /admin/models/:modelId

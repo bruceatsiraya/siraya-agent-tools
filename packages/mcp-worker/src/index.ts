@@ -12,6 +12,7 @@ import {
 } from "@siraya/agent";
 import { renderDocs } from "./docs.js";
 import { renderModelCatalog } from "./catalog.js";
+import { authenticateAdmin, login, logout, renderAdminPortal } from "./auth.js";
 import { enrichPublicInfo } from "./public-info.js";
 import {
   adminModel,
@@ -48,8 +49,20 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }));
+    if (url.pathname === "/admin/auth/login" && request.method === "POST") return login(request, env);
+    if (url.pathname === "/admin/auth/logout" && request.method === "POST") return logout(request, env);
+    if (url.pathname === "/admin/auth/me" && request.method === "GET") {
+      const identity = await authenticateAdmin(request, env);
+      return identity ? json({ authenticated: true, user: identity }) : json({ authenticated: false }, 401);
+    }
+    if ((url.pathname === "/admin" || url.pathname === "/admin/") && request.method === "GET") {
+      return renderAdminPortal(await authenticateAdmin(request, env));
+    }
     if (url.pathname === "/models" && request.method === "GET" && wantsHtml(request, url)) {
-      return renderModelCatalog(await getRegistry(env));
+      const wantsAdmin = url.searchParams.get("manage") === "1";
+      const identity = wantsAdmin ? await authenticateAdmin(request, env) : null;
+      if (wantsAdmin && !identity) return Response.redirect(`${url.origin}/admin`, 302);
+      return renderModelCatalog(await getRegistry(env), { adminMode: Boolean(identity) });
     }
     if (request.method === "GET") {
       const docs = renderDocs(url.pathname);
@@ -228,8 +241,9 @@ async function refreshAndResearch(env: Env): Promise<void> {
 }
 
 async function handleAdmin(request: Request, env: Env, url: URL): Promise<Response> {
-  if (!env.ADMIN_TOKEN) return json({ error: "admin_disabled" }, 503);
-  if (!hasBearerToken(request, env.ADMIN_TOKEN)) return json({ error: "unauthorized" }, 401);
+  const identity = await authenticateAdmin(request, env);
+  if (!identity) return json({ error: "unauthorized" }, 401);
+  if (identity.method === "session" && !isSameOrigin(request, url)) return json({ error: "invalid_origin" }, 403);
   try {
     const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
     const registry = await getRegistry(env);
@@ -286,9 +300,17 @@ async function rebuildEffectiveRegistry(env: Env): Promise<SirayaRegistry> {
 }
 
 async function refreshFromHttp(request: Request, env: Env): Promise<Response> {
-  if (!env.ADMIN_TOKEN) return json({ error: "refresh_disabled" }, 503);
-  if (!hasBearerToken(request, env.ADMIN_TOKEN)) return json({ error: "unauthorized" }, 401);
+  const identity = await authenticateAdmin(request, env);
+  if (!identity) return json({ error: "unauthorized" }, 401);
+  if (identity.method === "session" && !isSameOrigin(request, new URL(request.url))) {
+    return json({ error: "invalid_origin" }, 403);
+  }
   return json(await refreshRegistry(env));
+}
+
+function isSameOrigin(request: Request, url: URL): boolean {
+  const origin = request.headers.get("origin");
+  return origin === url.origin;
 }
 
 function requireAgentApiKey(apiKey?: string): string {

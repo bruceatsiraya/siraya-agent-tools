@@ -14,6 +14,7 @@ Published documentation:
 - https://siraya-mcp.bruceatsiraya.xyz/docs/mcp
 - https://siraya-mcp.bruceatsiraya.xyz/docs/registry
 - https://siraya-mcp.bruceatsiraya.xyz/docs/metadata
+- https://siraya-mcp.bruceatsiraya.xyz/admin (internal administration)
 - https://siraya-mcp.bruceatsiraya.xyz/docs/deploy
 
 ## Quick Start

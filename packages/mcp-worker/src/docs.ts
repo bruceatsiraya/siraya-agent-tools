@@ -295,7 +295,8 @@ GET /v1/models?include_capabilities=true</code></pre>
       ${section("Edit A Model", `
         <ol>
           <li>Open <a href="/models">Models</a> and expand a model row.</li>
-          <li>Select <strong>Edit metadata</strong> and enter <code>ADMIN_TOKEN</code>.</li>
+          <li>Open <code>/admin</code>, sign in, and select <strong>Manage models</strong>.</li>
+          <li>Expand a model and select <strong>Edit metadata</strong>.</li>
           <li>Enable <strong>Manual</strong> only for fields that should stop inheriting automatic values.</li>
           <li>Save. The Worker recompiles KV immediately, so Models, MCP, and SDK use the same result.</li>
         </ol>
@@ -320,7 +321,7 @@ DELETE /admin/models/:modelId
 POST   /admin/models/:modelId/research
 POST   /admin/research/:researchId/approve
 POST   /admin/research/:researchId/reject</code></pre>
-        <p>Every endpoint requires <code>Authorization: Bearer &lt;ADMIN_TOKEN&gt;</code>.</p>
+        <p>The browser uses an HttpOnly administration session. <code>Authorization: Bearer &lt;ADMIN_TOKEN&gt;</code> is retained only as an emergency CLI fallback.</p>
       `)}
     `
   },
@@ -343,7 +344,7 @@ POST   /admin/research/:researchId/reject</code></pre>
       ${section("Required Secrets", `
         <pre><code>npx.cmd wrangler@latest secret put SIRAYA_API_KEY --config packages/mcp-worker/wrangler.toml
 npx.cmd wrangler@latest secret put ADMIN_TOKEN --config packages/mcp-worker/wrangler.toml</code></pre>
-        <p>The Worker <code>SIRAYA_API_KEY</code> is a dedicated registry-sync key. <code>ADMIN_TOKEN</code> protects manual refresh. Each agent supplies its own SIRAYA API key for model calls.</p>
+        <p>The Worker <code>SIRAYA_API_KEY</code> is a dedicated registry-sync key. Administrators sign in at <code>/admin</code>; <code>ADMIN_TOKEN</code> is an optional emergency CLI credential. Each agent supplies its own SIRAYA API key for model calls.</p>
       `)}
       ${section("Deploy", `
         <pre><code>npx.cmd wrangler@latest deploy --config packages/mcp-worker/wrangler.toml</code></pre>

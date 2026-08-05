@@ -47,7 +47,7 @@ POST /stream/chat/completions
 POST /stream/responses
 ```
 
-`/refresh` requires `Authorization: Bearer <ADMIN_TOKEN>` when `ADMIN_TOKEN` is configured. The catalog's **Refresh registry** button prompts for this token in the browser and sends it only for that request; it is never stored in the page or registry.
+`/refresh` requires either an authenticated `/admin` browser session or `Authorization: Bearer <ADMIN_TOKEN>` for emergency CLI access. The public catalog never exposes refresh controls.
 
 ## MCP Client Configuration
 

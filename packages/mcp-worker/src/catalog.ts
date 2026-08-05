@@ -1,6 +1,7 @@
 import type { SirayaRegistry } from "@siraya/agent";
 
-export function renderModelCatalog(registry: SirayaRegistry): Response {
+export function renderModelCatalog(registry: SirayaRegistry, options: { adminMode?: boolean } = {}): Response {
+  const adminMode = Boolean(options.adminMode);
   const registryJson = JSON.stringify(registry)
     .replace(/</g, "\\u003c")
     .replace(/\u2028/g, "\\u2028")
@@ -46,7 +47,7 @@ export function renderModelCatalog(registry: SirayaRegistry): Response {
           <strong id="sync-time">${escapeHtml(registry.generatedAt)}</strong>
           <div class="sync-actions">
             <a href="/models?format=json">View JSON</a>
-            <button id="refresh-registry" type="button">Refresh registry</button>
+            ${adminMode ? '<button id="refresh-registry" type="button">Refresh registry</button>' : '<a href="/admin">Admin login</a>'}
           </div>
         </div>
       </header>
@@ -118,8 +119,8 @@ export function renderModelCatalog(registry: SirayaRegistry): Response {
         <button id="close-refresh" class="icon-button" type="button" aria-label="Close refresh dialog">x</button>
       </div>
       <p>Fetch the current SIRAYA model list and re-check public pricing sources.</p>
-      <label for="admin-token">Admin token</label>
-      <input id="admin-token" type="password" autocomplete="off" required>
+      ${adminMode ? "" : `<label for="admin-token">Admin token</label>
+      <input id="admin-token" type="password" autocomplete="off" required>`}
       <p class="refresh-feedback" id="refresh-feedback" role="status"></p>
       <div class="dialog-actions">
         <button id="cancel-refresh" type="button">Cancel</button>
@@ -138,11 +139,10 @@ export function renderModelCatalog(registry: SirayaRegistry): Response {
         </div>
         <button id="close-metadata" class="icon-button" type="button" aria-label="Close model editor">x</button>
       </header>
-      <div class="metadata-auth">
-        <label for="metadata-token">Admin token</label>
-        <input id="metadata-token" type="password" autocomplete="off" placeholder="Required to load and save metadata">
-        <button id="load-metadata" type="button">Load</button>
-      </div>
+      ${adminMode ? `<div class="metadata-auth metadata-session">
+        <span>Authenticated administration session</span>
+        <button id="load-metadata" type="button">Reload</button>
+      </div>` : ""}
       <div class="metadata-status" id="metadata-status" role="status"></div>
       <div class="metadata-tabs" role="tablist">
         <button class="active" type="button" data-metadata-tab="fields">Fields</button>
@@ -170,7 +170,7 @@ export function renderModelCatalog(registry: SirayaRegistry): Response {
   </dialog>
 
   <script id="registry-data" type="application/json">${registryJson}</script>
-  <script>${catalogScript()}</script>
+  <script>${catalogScript(adminMode)}</script>
 </body>
 </html>`, {
     headers: {
@@ -188,8 +188,9 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function catalogScript(): string {
+function catalogScript(adminMode: boolean): string {
   return `
+    const adminMode = ${adminMode ? "true" : "false"};
     const registry = JSON.parse(document.getElementById("registry-data").textContent);
     const models = registry.models;
     const categoryOrder = ["text", "image", "video", "audio", "embedding", "rerank"];
@@ -344,27 +345,26 @@ function catalogScript(): string {
     filterToggle.addEventListener("click", () => setFilterRail(true));
     document.getElementById("filter-close").addEventListener("click", () => setFilterRail(false));
     document.getElementById("filter-backdrop").addEventListener("click", () => setFilterRail(false));
-    document.getElementById("refresh-registry").addEventListener("click", () => {
+    document.getElementById("refresh-registry")?.addEventListener("click", () => {
       refreshFeedback.textContent = "";
       refreshDialog.showModal();
-      adminToken.focus();
+      if (adminToken) adminToken.focus();
     });
     document.getElementById("close-refresh").addEventListener("click", () => refreshDialog.close());
     document.getElementById("cancel-refresh").addEventListener("click", () => refreshDialog.close());
     refreshForm.addEventListener("submit", async event => {
       event.preventDefault();
-      const token = adminToken.value;
-      if (!token) return;
+      const token = adminToken?.value || "";
       const confirm = document.getElementById("confirm-refresh");
       confirm.disabled = true;
       refreshFeedback.textContent = "Refreshing model and public pricing data...";
       try {
         const response = await fetch("/refresh", {
           method: "POST",
-          headers: { authorization: "Bearer " + token }
+          headers: adminMode ? {} : { authorization: "Bearer " + token }
         });
         if (!response.ok) throw new Error(response.status === 401 ? "The admin token was not accepted." : "Refresh failed. Please try again.");
-        adminToken.value = "";
+        if (adminToken) adminToken.value = "";
         window.location.reload();
       } catch (error) {
         refreshFeedback.textContent = error instanceof Error ? error.message : "Refresh failed. Please try again.";
@@ -372,11 +372,11 @@ function catalogScript(): string {
         confirm.disabled = false;
       }
     });
-    document.getElementById("close-metadata").addEventListener("click", () => metadataDialog.close());
-    document.getElementById("load-metadata").addEventListener("click", loadMetadata);
-    document.getElementById("save-overrides").addEventListener("click", saveOverrides);
-    document.getElementById("delete-overrides").addEventListener("click", deleteOverrides);
-    document.getElementById("research-model").addEventListener("click", runResearch);
+    document.getElementById("close-metadata")?.addEventListener("click", () => metadataDialog.close());
+    document.getElementById("load-metadata")?.addEventListener("click", loadMetadata);
+    document.getElementById("save-overrides")?.addEventListener("click", saveOverrides);
+    document.getElementById("delete-overrides")?.addEventListener("click", deleteOverrides);
+    document.getElementById("research-model")?.addEventListener("click", runResearch);
     document.querySelector(".metadata-tabs").addEventListener("click", event => {
       const button = event.target.closest("button[data-metadata-tab]");
       if (!button) return;
@@ -434,13 +434,12 @@ function catalogScript(): string {
       researchResults.replaceChildren();
       metadataHistory.replaceChildren();
       metadataDialog.showModal();
-      if (metadataToken.value) loadMetadata();
-      else metadataToken.focus();
+      if (adminMode) loadMetadata();
     }
 
     async function loadMetadata() {
-      if (!activeMetadataModelId || !metadataToken.value) {
-        metadataStatus.textContent = "Admin token is required.";
+      if (!activeMetadataModelId || !adminMode) {
+        metadataStatus.textContent = "An authenticated administration session is required.";
         return;
       }
       setMetadataBusy(true, "Loading metadata...");
@@ -658,7 +657,7 @@ function catalogScript(): string {
     async function adminFetch(path, options = {}) {
       const response = await fetch(path, {
         ...options,
-        headers: { authorization: "Bearer " + metadataToken.value, "content-type": "application/json", ...(options.headers || {}) }
+        headers: { "content-type": "application/json", ...(options.headers || {}) }
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.message || (response.status === 401 ? "Admin token was not accepted." : "Admin request failed."));
@@ -820,15 +819,17 @@ function catalogScript(): string {
         link.rel = "noreferrer";
         body.append(link);
       }
-      const adminActions = el("div", "model-admin-actions");
-      const editButton = el("button", "edit-model-button", "Edit metadata");
-      editButton.type = "button";
-      editButton.addEventListener("click", event => {
-        event.preventDefault();
-        openMetadataEditor(model.id);
-      });
-      adminActions.append(editButton);
-      body.append(adminActions);
+      if (adminMode) {
+        const adminActions = el("div", "model-admin-actions");
+        const editButton = el("button", "edit-model-button", "Edit metadata");
+        editButton.type = "button";
+        editButton.addEventListener("click", event => {
+          event.preventDefault();
+          openMetadataEditor(model.id);
+        });
+        adminActions.append(editButton);
+        body.append(adminActions);
+      }
       details.append(body);
       return details;
     }
