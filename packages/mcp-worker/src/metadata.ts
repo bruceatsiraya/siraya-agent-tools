@@ -140,10 +140,11 @@ export async function researchModel(
   const apiKey = env.SIRAYA_ENRICHMENT_API_KEY ?? env.SIRAYA_API_KEY;
   if (!apiKey) throw new Error("SIRAYA_ENRICHMENT_API_KEY is required for model research.");
   const baseUrl = trimRight(env.SIRAYA_BASE_URL ?? DEFAULT_BASE_URL, "/");
-  const query = `\"${model.id}\" AI model provider capabilities pricing documentation`;
+  const queries = buildResearchQueries(model.id);
+  const query = queries.join(" | ");
   const now = new Date().toISOString();
   try {
-    const search = await searchPublicWeb(query);
+    const search = await searchPublicWeb(queries);
     const sources = search.sources;
     const analysisModel = env.SIRAYA_ENRICHMENT_MODEL ?? "deepseek-v4-pro";
     const completionResponse = await fetch(`${baseUrl}/chat/completions`, {
@@ -168,10 +169,15 @@ export async function researchModel(
     const droppedFields = Object.keys(rawChanges).filter(field => !Object.prototype.hasOwnProperty.call(candidate, field));
     const retention = Object.keys(rawChanges).length ? Object.keys(candidate).length / Object.keys(rawChanges).length : 0;
     const confidence = clampConfidence(analysis.confidence) * retention;
-    const evidence = Array.isArray(analysis.evidence) ? [...analysis.evidence] : [...sources];
+    const evidence = Array.isArray(analysis.evidence) && analysis.evidence.length
+      ? [...analysis.evidence]
+      : sources.map(source => ({ field: "source", url: source.url, claim: source.title ?? "Public source" }));
     if (droppedFields.length) evidence.push({
       field: "_validation", claim: `Discarded schema-invalid fields: ${droppedFields.join(", ")}`
     });
+    if (!Object.keys(candidate).length) {
+      throw new Error("Public sources were found, but the SIRAYA analysis produced no schema-valid metadata fields.");
+    }
     const insert = await env.SIRAYA_METADATA.prepare(`INSERT INTO model_research
       (model_id, status, query, candidate_json, evidence_json, confidence, analysis_model, created_at)
       VALUES (?, 'pending', ?, ?, ?, ?, ?, ?) RETURNING id`)
@@ -187,14 +193,47 @@ export async function researchModel(
   }
 }
 
-async function searchPublicWeb(query: string): Promise<{ provider: string; sources: Record<string, unknown>[] }> {
-  const bingSources = await bingRssSearch(query);
-  if (bingSources.length) return { provider: "bing_rss_fallback", sources: bingSources };
-  const sources = await duckDuckGoSearch(query);
+async function searchPublicWeb(queries: string[]): Promise<{ provider: string; sources: Record<string, unknown>[] }> {
+  const bingSources = await collectSearchResults(queries, bingRssSearch);
+  if (bingSources.length) return { provider: "bing_rss", sources: bingSources };
+  const sources = await collectSearchResults(queries, duckDuckGoSearch);
   if (!sources.length) {
     throw new Error("Public search returned no results from Bing RSS or DuckDuckGo.");
   }
-  return { provider: "duckduckgo_fallback", sources };
+  return { provider: "duckduckgo", sources };
+}
+
+async function collectSearchResults(
+  queries: string[],
+  search: (query: string) => Promise<Record<string, unknown>[]>
+): Promise<Record<string, unknown>[]> {
+  const sources = new Map<string, Record<string, unknown>>();
+  for (const query of queries) {
+    const results = await search(query);
+    for (const result of results) {
+      const url = typeof result.url === "string" ? result.url : "";
+      if (url && !sources.has(url)) sources.set(url, { ...result, query });
+      if (sources.size >= 8) return [...sources.values()];
+    }
+  }
+  return [...sources.values()];
+}
+
+function buildResearchQueries(modelId: string): string[] {
+  const readable = modelId.replace(/[._-]+/g, " ").replace(/\s+/g, " ").trim();
+  const modeMatch = modelId.match(/(?:^|[-_.])(t2v|i2v|v2v|s2v)$/i);
+  const mode = modeMatch?.[1].toLowerCase();
+  const modeLabel = mode === "t2v" ? "text to video"
+    : mode === "i2v" ? "image to video"
+    : mode === "v2v" ? "video to video"
+    : mode === "s2v" ? "subject to video" : "";
+  const family = modelId.replace(/[-_.](t2v|i2v|v2v|s2v)$/i, "").replace(/[._-]+/g, " ").trim();
+  return [...new Set([
+    `\"${modelId}\" AI model`,
+    `\"${readable}\" AI model capabilities`,
+    modeLabel ? `\"${family}\" ${modeLabel} video model` : `\"${family}\" AI model provider`,
+    `${readable} model documentation pricing`
+  ])];
 }
 
 async function bingRssSearch(query: string): Promise<Record<string, unknown>[]> {
@@ -295,10 +334,12 @@ export async function reviewResearch(
   if (!row) throw new Error(`Unknown research result: ${researchId}`);
   if (row.status !== "pending") throw new Error(`Research result is already ${row.status}.`);
   if (approve) {
+    const candidate = parseRecord(row.candidate_json ?? "{}");
+    if (!Object.keys(candidate).length) throw new Error("An empty research candidate cannot be approved. Run research again or reject it.");
     const current = await db.prepare("SELECT * FROM model_overrides WHERE model_id = ?").bind(row.model_id).first<OverrideRow>();
     await saveModelOverride(db, registry, row.model_id, {
       baseVersion: current?.version ?? 0,
-      changes: parseRecord(row.candidate_json ?? "{}")
+      changes: candidate
     });
   }
   const status = approve ? "approved" : "rejected";
@@ -401,10 +442,13 @@ function findModel(registry: SirayaRegistry, modelId: string): SirayaModelCapabi
 }
 
 function formatResearchRow(row: ResearchRow): Record<string, unknown> {
+  const candidate = parseRecord(row.candidate_json ?? "{}");
+  const emptyPending = row.status === "pending" && !Object.keys(candidate).length;
   return {
-    id: row.id, modelId: row.model_id, status: row.status, query: row.query,
-    candidate: parseRecord(row.candidate_json ?? "{}"), evidence: parseJson(row.evidence_json ?? "[]"),
-    confidence: row.confidence, analysisModel: row.analysis_model, error: row.error,
+    id: row.id, modelId: row.model_id, status: emptyPending ? "error" : row.status, query: row.query,
+    candidate, evidence: parseJson(row.evidence_json ?? "[]"),
+    confidence: row.confidence, analysisModel: row.analysis_model,
+    error: emptyPending ? "No schema-valid candidate fields were produced. Run research again." : row.error,
     createdAt: row.created_at, reviewedAt: row.reviewed_at
   };
 }

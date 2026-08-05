@@ -610,7 +610,7 @@ function catalogScript(): string {
             evidence.append(link);
           });
           item.append(evidence);
-          if (result.status === "pending") {
+          if (result.status === "pending" && Object.keys(result.candidate || {}).length) {
             const actions = el("div", "research-actions");
             ["reject", "approve"].forEach(action => {
               const button = el("button", action === "approve" ? "primary-action" : "", action === "approve" ? "Approve and apply" : "Reject");
@@ -620,6 +620,8 @@ function catalogScript(): string {
               actions.append(button);
             });
             item.append(actions);
+          } else if (result.status === "pending") {
+            item.append(el("p", "research-error", "No schema-valid candidate fields were produced. Run research again or reject this result."));
           }
         }
         researchResults.append(item);
