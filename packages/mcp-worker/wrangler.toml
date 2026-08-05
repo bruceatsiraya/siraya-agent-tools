@@ -10,11 +10,17 @@ routes = [
 
 [vars]
 SIRAYA_BASE_URL = "https://llm.siraya.ai/v1"
+SIRAYA_ENRICHMENT_MODEL = "deepseek-v4-pro"
 
 [[kv_namespaces]]
 binding = "SIRAYA_REGISTRY"
 id = "7f90e1d5c1fd4ba0857271f12b5caa46"
 preview_id = "f49c57aad20c48fa988e213e04259f6c"
+
+[[d1_databases]]
+binding = "SIRAYA_METADATA"
+database_name = "siraya-model-metadata"
+database_id = "a1cd818a-ecac-4050-b768-b706354b6de7"
 
 [triggers]
 crons = ["0 18 * * *"]

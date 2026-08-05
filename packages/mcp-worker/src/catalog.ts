@@ -28,6 +28,7 @@ export function renderModelCatalog(registry: SirayaRegistry): Response {
         <a href="/docs/sdk">SDK</a>
         <a href="/docs/mcp">MCP</a>
         <a href="/docs/registry">Registry</a>
+        <a href="/docs/metadata">Metadata</a>
         <a href="/docs/deploy">Deploy</a>
       </nav>
       <div class="status"><span class="dot"></span><span>Daily registry live</span></div>
@@ -127,6 +128,47 @@ export function renderModelCatalog(registry: SirayaRegistry): Response {
     </form>
   </dialog>
 
+  <dialog id="metadata-dialog" class="metadata-dialog" aria-labelledby="metadata-title">
+    <div class="metadata-shell">
+      <header class="metadata-heading">
+        <div>
+          <p class="eyebrow">Model administration</p>
+          <h2 id="metadata-title">Edit model metadata</h2>
+          <code id="metadata-model-id"></code>
+        </div>
+        <button id="close-metadata" class="icon-button" type="button" aria-label="Close model editor">x</button>
+      </header>
+      <div class="metadata-auth">
+        <label for="metadata-token">Admin token</label>
+        <input id="metadata-token" type="password" autocomplete="off" placeholder="Required to load and save metadata">
+        <button id="load-metadata" type="button">Load</button>
+      </div>
+      <div class="metadata-status" id="metadata-status" role="status"></div>
+      <div class="metadata-tabs" role="tablist">
+        <button class="active" type="button" data-metadata-tab="fields">Fields</button>
+        <button type="button" data-metadata-tab="research">Web research</button>
+        <button type="button" data-metadata-tab="history">History</button>
+      </div>
+      <section class="metadata-panel active" data-metadata-panel="fields">
+        <div class="override-grid" id="override-fields"></div>
+        <div class="metadata-actions">
+          <button id="delete-overrides" type="button">Reset all overrides</button>
+          <button id="save-overrides" class="primary-action" type="button">Save changes</button>
+        </div>
+      </section>
+      <section class="metadata-panel" data-metadata-panel="research">
+        <div class="research-toolbar">
+          <div><strong>Public web research</strong><p>Search with SIRAYA Tavily, then use a SIRAYA model to produce field-level suggestions with evidence.</p></div>
+          <button id="research-model" class="primary-action" type="button">Research model</button>
+        </div>
+        <div id="research-results" class="research-results"></div>
+      </section>
+      <section class="metadata-panel" data-metadata-panel="history">
+        <div id="metadata-history" class="metadata-history"></div>
+      </section>
+    </div>
+  </dialog>
+
   <script id="registry-data" type="application/json">${registryJson}</script>
   <script>${catalogScript()}</script>
 </body>
@@ -198,6 +240,39 @@ function catalogScript(): string {
     const refreshForm = document.getElementById("refresh-form");
     const adminToken = document.getElementById("admin-token");
     const refreshFeedback = document.getElementById("refresh-feedback");
+    const metadataDialog = document.getElementById("metadata-dialog");
+    const metadataToken = document.getElementById("metadata-token");
+    const metadataStatus = document.getElementById("metadata-status");
+    const overrideFields = document.getElementById("override-fields");
+    const researchResults = document.getElementById("research-results");
+    const metadataHistory = document.getElementById("metadata-history");
+    let activeMetadataModelId = "";
+    let activeMetadata = null;
+
+    const metadataFields = [
+      { key: "provider", label: "Provider ID", type: "text", group: "Identity" },
+      { key: "providerName", label: "Provider name", type: "text", group: "Identity" },
+      { key: "family", label: "Family", type: "select", values: ["gpt","claude","gemini","deepseek","grok","qwen","kimi","glm","minimax","seed","image","video","audio","embedding","rerank","other"], group: "Identity" },
+      { key: "category", label: "Category", type: "select", values: categoryOrder, group: "Identity" },
+      { key: "documentationUrl", label: "Documentation URL", type: "url", group: "Identity" },
+      { key: "pricingUrl", label: "Pricing URL", type: "url", group: "Identity" },
+      { key: "apiFormats", label: "API formats", type: "array", group: "Modalities & API" },
+      { key: "modalities", label: "Legacy modalities", type: "array", group: "Modalities & API" },
+      { key: "inputModalities", label: "Input modalities", type: "array", group: "Modalities & API" },
+      { key: "outputModalities", label: "Output modalities", type: "array", group: "Modalities & API" },
+      { key: "supportedParameters", label: "Supported parameters", type: "array", group: "Modalities & API" },
+      { key: "capabilityTags", label: "Capability tags", type: "array", group: "Taxonomy" },
+      { key: "taskTags", label: "Task tags", type: "array", group: "Taxonomy" },
+      { key: "traits", label: "Traits", type: "array", group: "Taxonomy" },
+      { key: "lifecycle", label: "Lifecycle", type: "select", values: ["stable","preview","dated","unknown"], group: "Taxonomy" },
+      { key: "qualityTier", label: "Quality tier", type: "select", values: ["economy","standard","premium","specialized","unknown"], group: "Taxonomy" },
+      { key: "speedTier", label: "Speed tier", type: "select", values: ["fast","balanced","quality","unknown"], group: "Taxonomy" },
+      { key: "capabilitySource", label: "Capability source", type: "select", values: ["declared","inferred"], group: "Taxonomy" },
+      { key: "taxonomyConfidence", label: "Taxonomy confidence", type: "select", values: ["declared","inferred"], group: "Taxonomy" },
+      { key: "features", label: "Feature flags", type: "json", group: "Advanced" },
+      { key: "pricing", label: "Pricing object", type: "json", group: "Advanced" },
+      { key: "notes", label: "Notes", type: "lines", group: "Advanced" }
+    ];
 
     document.getElementById("sync-time").textContent = new Intl.DateTimeFormat(undefined, {
       dateStyle: "medium", timeStyle: "short"
@@ -297,6 +372,22 @@ function catalogScript(): string {
         confirm.disabled = false;
       }
     });
+    document.getElementById("close-metadata").addEventListener("click", () => metadataDialog.close());
+    document.getElementById("load-metadata").addEventListener("click", loadMetadata);
+    document.getElementById("save-overrides").addEventListener("click", saveOverrides);
+    document.getElementById("delete-overrides").addEventListener("click", deleteOverrides);
+    document.getElementById("research-model").addEventListener("click", runResearch);
+    document.querySelector(".metadata-tabs").addEventListener("click", event => {
+      const button = event.target.closest("button[data-metadata-tab]");
+      if (!button) return;
+      document.querySelectorAll("[data-metadata-tab]").forEach(item => item.classList.toggle("active", item === button));
+      document.querySelectorAll("[data-metadata-panel]").forEach(panel => panel.classList.toggle("active", panel.dataset.metadataPanel === button.dataset.metadataTab));
+    });
+    researchResults.addEventListener("click", async event => {
+      const button = event.target.closest("button[data-research-action]");
+      if (!button) return;
+      await reviewResearchResult(Number(button.dataset.researchId), button.dataset.researchAction);
+    });
 
     function appendTaxonomyOptions(container, stateKey, modelKey, labels) {
       const counts = new Map();
@@ -332,6 +423,255 @@ function catalogScript(): string {
       document.querySelectorAll("input[data-state-key]").forEach(input => {
         input.checked = state[input.dataset.stateKey].has(input.value);
       });
+    }
+
+    function openMetadataEditor(modelId) {
+      activeMetadataModelId = modelId;
+      activeMetadata = null;
+      document.getElementById("metadata-model-id").textContent = modelId;
+      metadataStatus.textContent = "Enter the admin token, then load the current metadata.";
+      overrideFields.replaceChildren();
+      researchResults.replaceChildren();
+      metadataHistory.replaceChildren();
+      metadataDialog.showModal();
+      if (metadataToken.value) loadMetadata();
+      else metadataToken.focus();
+    }
+
+    async function loadMetadata() {
+      if (!activeMetadataModelId || !metadataToken.value) {
+        metadataStatus.textContent = "Admin token is required.";
+        return;
+      }
+      setMetadataBusy(true, "Loading metadata...");
+      try {
+        activeMetadata = await adminFetch("/admin/models/" + encodeURIComponent(activeMetadataModelId));
+        renderOverrideFields();
+        renderResearchResults();
+        renderMetadataHistory();
+        metadataStatus.textContent = "Loaded. Only fields marked Manual will override future automatic refreshes.";
+      } catch (error) {
+        metadataStatus.textContent = error.message;
+      } finally {
+        setMetadataBusy(false);
+      }
+    }
+
+    function renderOverrideFields() {
+      overrideFields.replaceChildren();
+      const patch = activeMetadata.override?.patch || {};
+      let group = "";
+      metadataFields.forEach(definition => {
+        if (definition.group !== group) {
+          group = definition.group;
+          overrideFields.append(el("h3", "override-group-title", group));
+        }
+        const row = el("div", "override-field");
+        row.dataset.field = definition.key;
+        const heading = el("div", "override-field-heading");
+        const title = el("strong", "", definition.label);
+        const toggleLabel = el("label", "manual-toggle");
+        const toggle = document.createElement("input");
+        toggle.type = "checkbox";
+        toggle.checked = Object.prototype.hasOwnProperty.call(patch, definition.key);
+        toggle.dataset.overrideToggle = definition.key;
+        toggleLabel.append(toggle, document.createTextNode(" Manual"));
+        heading.append(title, toggleLabel);
+        const control = metadataControl(definition, toggle.checked ? patch[definition.key] : activeMetadata.model[definition.key]);
+        control.dataset.overrideControl = definition.key;
+        control.disabled = !toggle.checked;
+        toggle.addEventListener("change", () => { control.disabled = !toggle.checked; });
+        row.append(heading, control);
+        if (!toggle.checked) row.append(el("small", "inherited-value", "Auto: " + summarizeMetadataValue(activeMetadata.inferred[definition.key])));
+        overrideFields.append(row);
+      });
+    }
+
+    function metadataControl(definition, value) {
+      if (definition.type === "select") {
+        const select = document.createElement("select");
+        definition.values.forEach(optionValue => {
+          const option = document.createElement("option");
+          option.value = optionValue;
+          option.textContent = optionValue;
+          option.selected = value === optionValue;
+          select.append(option);
+        });
+        return select;
+      }
+      if (["json", "lines"].includes(definition.type)) {
+        const textarea = document.createElement("textarea");
+        textarea.rows = definition.type === "json" ? 7 : 4;
+        textarea.value = definition.type === "json" ? JSON.stringify(value ?? {}, null, 2) : (Array.isArray(value) ? value.join("\\n") : "");
+        textarea.dataset.valueType = definition.type;
+        return textarea;
+      }
+      const input = document.createElement("input");
+      input.type = definition.type === "url" ? "url" : "text";
+      input.value = definition.type === "array" ? (Array.isArray(value) ? value.join(", ") : "") : String(value ?? "");
+      input.dataset.valueType = definition.type;
+      return input;
+    }
+
+    async function saveOverrides() {
+      if (!activeMetadata) return;
+      const changes = {};
+      const resetFields = [];
+      try {
+        metadataFields.forEach(definition => {
+          const toggle = overrideFields.querySelector('[data-override-toggle="' + definition.key + '"]');
+          const hadOverride = Object.prototype.hasOwnProperty.call(activeMetadata.override?.patch || {}, definition.key);
+          if (!toggle.checked) {
+            if (hadOverride) resetFields.push(definition.key);
+            return;
+          }
+          changes[definition.key] = readMetadataControl(definition, overrideFields.querySelector('[data-override-control="' + definition.key + '"]'));
+        });
+      } catch (error) {
+        metadataStatus.textContent = error.message;
+        return;
+      }
+      setMetadataBusy(true, "Saving overrides and rebuilding registry...");
+      try {
+        await adminFetch("/admin/models/" + encodeURIComponent(activeMetadataModelId), {
+          method: "PATCH",
+          body: JSON.stringify({ baseVersion: activeMetadata.override?.version || 0, changes, resetFields })
+        });
+        await loadMetadata();
+        metadataStatus.textContent = "Saved. Models, MCP, and SDK now use the updated metadata.";
+      } catch (error) {
+        metadataStatus.textContent = error.message;
+      } finally {
+        setMetadataBusy(false);
+      }
+    }
+
+    function readMetadataControl(definition, control) {
+      if (definition.type === "json") {
+        try { return JSON.parse(control.value); } catch { throw new Error(definition.label + " must be valid JSON."); }
+      }
+      if (definition.type === "array") return control.value.split(",").map(value => value.trim()).filter(Boolean);
+      if (definition.type === "lines") return control.value.split(/\\r?\\n/).map(value => value.trim()).filter(Boolean);
+      return control.value;
+    }
+
+    async function deleteOverrides() {
+      if (!activeMetadata || !confirm("Reset every manual override for " + activeMetadataModelId + "?")) return;
+      setMetadataBusy(true, "Resetting overrides...");
+      try {
+        await adminFetch("/admin/models/" + encodeURIComponent(activeMetadataModelId), { method: "DELETE" });
+        await loadMetadata();
+        metadataStatus.textContent = "All fields now follow automatic inference.";
+      } catch (error) {
+        metadataStatus.textContent = error.message;
+      } finally {
+        setMetadataBusy(false);
+      }
+    }
+
+    async function runResearch() {
+      if (!activeMetadata) return;
+      setMetadataBusy(true, "Searching public sources and asking SIRAYA to classify this model...");
+      try {
+        await adminFetch("/admin/models/" + encodeURIComponent(activeMetadataModelId) + "/research", { method: "POST" });
+        await loadMetadata();
+        document.querySelector('[data-metadata-tab="research"]').click();
+        metadataStatus.textContent = "Research completed. Review the candidate fields and evidence before approval.";
+      } catch (error) {
+        metadataStatus.textContent = error.message;
+      } finally {
+        setMetadataBusy(false);
+      }
+    }
+
+    function renderResearchResults() {
+      researchResults.replaceChildren();
+      if (!activeMetadata.research.length) {
+        researchResults.append(el("p", "metadata-empty", "No research has been run for this model."));
+        return;
+      }
+      activeMetadata.research.forEach(result => {
+        const item = el("article", "research-result");
+        const heading = el("div", "research-result-heading");
+        heading.append(el("strong", "", "Research #" + result.id), el("span", "research-status status-" + result.status, result.status));
+        item.append(heading, el("p", "research-meta", "Confidence " + Math.round((result.confidence || 0) * 100) + "% | " + new Date(result.createdAt).toLocaleString()));
+        if (result.error) item.append(el("p", "research-error", result.error));
+        else {
+          const pre = el("pre", "research-json");
+          pre.append(el("code", "", JSON.stringify(result.candidate, null, 2)));
+          item.append(pre);
+          const evidence = el("div", "evidence-list");
+          (result.evidence || []).slice(0, 8).forEach(entry => {
+            const record = typeof entry === "object" && entry ? entry : {};
+            const link = el("a", "", record.field ? record.field + ": " + (record.claim || record.url || "source") : (record.title || record.url || "source"));
+            link.href = record.url || "#";
+            link.target = "_blank";
+            link.rel = "noreferrer";
+            evidence.append(link);
+          });
+          item.append(evidence);
+          if (result.status === "pending") {
+            const actions = el("div", "research-actions");
+            ["reject", "approve"].forEach(action => {
+              const button = el("button", action === "approve" ? "primary-action" : "", action === "approve" ? "Approve and apply" : "Reject");
+              button.type = "button";
+              button.dataset.researchAction = action;
+              button.dataset.researchId = result.id;
+              actions.append(button);
+            });
+            item.append(actions);
+          }
+        }
+        researchResults.append(item);
+      });
+    }
+
+    async function reviewResearchResult(id, action) {
+      setMetadataBusy(true, action === "approve" ? "Applying researched metadata..." : "Rejecting candidate...");
+      try {
+        await adminFetch("/admin/research/" + id + "/" + action, { method: "POST" });
+        await loadMetadata();
+        document.querySelector('[data-metadata-tab="research"]').click();
+        metadataStatus.textContent = action === "approve" ? "Research approved and applied to the live registry." : "Research candidate rejected.";
+      } catch (error) {
+        metadataStatus.textContent = error.message;
+      } finally {
+        setMetadataBusy(false);
+      }
+    }
+
+    function renderMetadataHistory() {
+      metadataHistory.replaceChildren();
+      if (!activeMetadata.history.length) {
+        metadataHistory.append(el("p", "metadata-empty", "No manual changes recorded."));
+        return;
+      }
+      activeMetadata.history.forEach(entry => {
+        const item = el("div", "history-row");
+        item.append(el("strong", "", String(entry.action)), el("span", "", new Date(String(entry.created_at)).toLocaleString()));
+        metadataHistory.append(item);
+      });
+    }
+
+    async function adminFetch(path, options = {}) {
+      const response = await fetch(path, {
+        ...options,
+        headers: { authorization: "Bearer " + metadataToken.value, "content-type": "application/json", ...(options.headers || {}) }
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.message || (response.status === 401 ? "Admin token was not accepted." : "Admin request failed."));
+      return body;
+    }
+
+    function setMetadataBusy(busy, message) {
+      metadataDialog.classList.toggle("busy", busy);
+      metadataDialog.querySelectorAll("button").forEach(button => { button.disabled = busy; });
+      if (message) metadataStatus.textContent = message;
+    }
+
+    function summarizeMetadataValue(value) {
+      const text = typeof value === "object" ? JSON.stringify(value) : String(value ?? "Not set");
+      return text.length > 140 ? text.slice(0, 137) + "..." : text;
     }
 
     function renderStats() {
@@ -478,6 +818,15 @@ function catalogScript(): string {
         link.rel = "noreferrer";
         body.append(link);
       }
+      const adminActions = el("div", "model-admin-actions");
+      const editButton = el("button", "edit-model-button", "Edit metadata");
+      editButton.type = "button";
+      editButton.addEventListener("click", event => {
+        event.preventDefault();
+        openMetadataEditor(model.id);
+      });
+      adminActions.append(editButton);
+      body.append(adminActions);
       details.append(body);
       return details;
     }
@@ -678,6 +1027,56 @@ function catalogStyles(): string {
     .dialog-actions button { min-height: 38px; padding: 0 13px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); cursor: pointer; font-weight: 700; }
     .dialog-actions .primary-action { border-color: var(--teal); background: var(--teal); color: #fff; }
     .dialog-actions button:disabled { cursor: wait; opacity: .7; }
+    .model-admin-actions { grid-column: 1 / -1; display: flex; justify-content: end; padding-top: 12px; border-top: 1px solid var(--line); }
+    .edit-model-button { min-height: 36px; padding: 0 12px; border: 1px solid var(--teal); border-radius: 6px; background: #fff; color: var(--teal); cursor: pointer; font-weight: 750; }
+    .metadata-dialog { width: min(1040px, calc(100% - 32px)); max-height: calc(100vh - 32px); overflow: hidden; }
+    .metadata-shell { display: grid; grid-template-rows: auto auto auto auto minmax(0, 1fr); max-height: calc(100vh - 34px); }
+    .metadata-heading { display: flex; justify-content: space-between; gap: 20px; padding: 22px 24px 14px; }
+    .metadata-heading h2 { margin-bottom: 3px; }
+    .metadata-heading code { color: var(--muted); }
+    .metadata-auth { display: grid; grid-template-columns: auto minmax(220px, 1fr) auto; gap: 10px; align-items: center; padding: 10px 24px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--wash); }
+    .metadata-auth label { text-transform: none; }
+    .metadata-auth input { height: 38px; padding: 0 10px; border: 1px solid #bdc9c3; border-radius: 6px; }
+    .metadata-auth button, .metadata-actions button, .research-toolbar button, .research-actions button { min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 6px; background: #fff; cursor: pointer; font-weight: 700; }
+    .metadata-auth button { border-color: var(--teal); color: var(--teal); }
+    .metadata-status { min-height: 38px; padding: 9px 24px; color: var(--muted); font-size: 13px; }
+    .metadata-dialog.busy .metadata-status { color: var(--teal); }
+    .metadata-tabs { display: flex; gap: 2px; padding: 0 24px; border-bottom: 1px solid var(--line); }
+    .metadata-tabs button { min-height: 38px; padding: 0 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); cursor: pointer; font-weight: 700; }
+    .metadata-tabs button.active { border-bottom-color: var(--teal); color: var(--ink); }
+    .metadata-panel { display: none; min-height: 0; overflow-y: auto; padding: 20px 24px 26px; }
+    .metadata-panel.active { display: block; }
+    .override-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 18px; }
+    .override-group-title { grid-column: 1 / -1; margin: 14px 0 0; padding-bottom: 7px; border-bottom: 1px solid var(--line); font-size: 15px; }
+    .override-group-title:first-child { margin-top: 0; }
+    .override-field { display: grid; gap: 6px; align-content: start; padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+    .override-field-heading { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+    .override-field-heading strong { font-size: 13px; }
+    .manual-toggle { display: inline-flex; gap: 5px; align-items: center; color: var(--muted); font-size: 11px; text-transform: none; white-space: nowrap; }
+    .manual-toggle input { accent-color: var(--teal); }
+    .override-field > input, .override-field > select, .override-field > textarea { width: 100%; min-height: 38px; padding: 8px 10px; border: 1px solid #bdc9c3; border-radius: 6px; color: var(--ink); background: #fff; font-family: inherit; font-size: 13px; line-height: 1.45; }
+    .override-field > textarea { resize: vertical; font-family: "SFMono-Regular", Consolas, monospace; }
+    .override-field > :disabled { background: #f1f4f2; color: #84908a; }
+    .inherited-value { color: var(--muted); overflow-wrap: anywhere; }
+    .metadata-actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+    .metadata-actions .primary-action, .research-toolbar .primary-action, .research-actions .primary-action { border-color: var(--teal); background: var(--teal); color: #fff; }
+    .research-toolbar { display: flex; justify-content: space-between; gap: 20px; align-items: center; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+    .research-toolbar p { margin: 3px 0 0; color: var(--muted); }
+    .research-results { display: grid; gap: 14px; margin-top: 16px; }
+    .research-result { padding: 14px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+    .research-result-heading { display: flex; justify-content: space-between; gap: 12px; }
+    .research-status { padding: 2px 7px; border-radius: 5px; background: #edf1ef; color: var(--muted); font-size: 11px; }
+    .status-pending { background: #f5eddc; color: var(--gold); }
+    .status-approved { background: #e2efe9; color: var(--green); }
+    .status-error, .status-rejected { background: #f7e9e5; color: var(--coral); }
+    .research-meta, .research-error { margin: 4px 0 10px; color: var(--muted); font-size: 12px; }
+    .research-error { color: var(--coral); }
+    .research-json { max-height: 280px; overflow: auto; padding: 12px; background: #f5f7f6; font-size: 12px; }
+    .evidence-list { display: flex; flex-wrap: wrap; gap: 7px 12px; margin-top: 10px; }
+    .evidence-list a { color: var(--teal); font-size: 12px; }
+    .research-actions { display: flex; justify-content: end; gap: 9px; margin-top: 14px; }
+    .history-row { display: flex; justify-content: space-between; gap: 16px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+    .history-row span, .metadata-empty { color: var(--muted); }
     code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
     @media (max-width: 980px) {
       .shell { display: block; }
@@ -798,6 +1197,14 @@ function catalogStyles(): string {
       .model-row summary .category { grid-column: 2; grid-row: 1; margin-right: 22px; }
       .model-row summary > .chips { grid-column: 1 / -1; padding-left: 40px; }
       .model-detail { grid-template-columns: 1fr; padding: 16px 10px 20px; }
+      .metadata-dialog { width: calc(100% - 16px); max-height: calc(100vh - 16px); }
+      .metadata-shell { max-height: calc(100vh - 18px); }
+      .metadata-heading, .metadata-panel { padding-left: 14px; padding-right: 14px; }
+      .metadata-auth { grid-template-columns: 1fr auto; padding: 10px 14px; }
+      .metadata-auth label { grid-column: 1 / -1; }
+      .metadata-tabs { padding: 0 14px; overflow-x: auto; }
+      .override-grid { grid-template-columns: 1fr; }
+      .research-toolbar { align-items: start; flex-direction: column; }
     }
   `;
 }

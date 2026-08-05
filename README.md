@@ -13,6 +13,7 @@ Published documentation:
 - https://siraya-mcp.bruceatsiraya.xyz/docs/sdk
 - https://siraya-mcp.bruceatsiraya.xyz/docs/mcp
 - https://siraya-mcp.bruceatsiraya.xyz/docs/registry
+- https://siraya-mcp.bruceatsiraya.xyz/docs/metadata
 - https://siraya-mcp.bruceatsiraya.xyz/docs/deploy
 
 ## Quick Start
@@ -28,3 +29,4 @@ Read:
 - [MCP guide](./docs/mcp.md)
 - [Cloudflare deployment](./docs/cloudflare-deploy.md)
 - [Registry design](./docs/registry.md)
+- [Metadata administration](./docs/model-metadata.md)

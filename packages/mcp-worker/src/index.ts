@@ -13,12 +13,25 @@ import {
 import { renderDocs } from "./docs.js";
 import { renderModelCatalog } from "./catalog.js";
 import { enrichPublicInfo } from "./public-info.js";
+import {
+  adminModel,
+  applyStoredOverrides,
+  deleteModelOverride,
+  lowConfidenceModels,
+  researchModel,
+  reviewResearch,
+  saveModelOverride,
+  type MetadataEnv
+} from "./metadata.js";
 
-interface Env {
+interface Env extends MetadataEnv {
   SIRAYA_API_KEY?: string;
+  SIRAYA_ENRICHMENT_API_KEY?: string;
   SIRAYA_BASE_URL?: string;
+  SIRAYA_ENRICHMENT_MODEL?: string;
   ADMIN_TOKEN?: string;
   SIRAYA_REGISTRY: KVNamespace;
+  SIRAYA_METADATA: D1Database;
 }
 
 interface JsonRpcRequest {
@@ -47,6 +60,9 @@ export default {
     if (url.pathname === "/models" && request.method === "GET") return json(await getRegistry(env));
     if (url.pathname === "/api/models" && request.method === "GET") return json({ data: (await getRegistry(env)).models });
     if (url.pathname === "/refresh" && request.method === "POST") return refreshFromHttp(request, env);
+    if (url.pathname.startsWith("/admin/") && ["GET", "POST", "PATCH", "DELETE"].includes(request.method)) {
+      return handleAdmin(request, env, url);
+    }
     if (url.pathname === "/stream/chat/completions" && request.method === "POST") {
       return proxySirayaSse(request, env, "/chat/completions");
     }
@@ -58,7 +74,7 @@ export default {
   },
 
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
-    ctx.waitUntil(refreshRegistry(env));
+    ctx.waitUntil(refreshAndResearch(env));
   }
 };
 
@@ -191,11 +207,82 @@ async function refreshRegistry(env: Env, fallbackApiKey?: string): Promise<Siray
     throw new Error(`SIRAYA /models failed: ${response.status} ${await response.text()}`);
   }
   const payload = await response.json() as { data: SirayaModel[] };
-  const registry = await enrichPublicInfo(buildRegistry(payload.data, `${baseUrl}/models`));
+  const inferred = await enrichPublicInfo(buildRegistry(payload.data, `${baseUrl}/models`));
+  const registry = await applyStoredOverrides(inferred, env.SIRAYA_METADATA);
   await env.SIRAYA_REGISTRY.put(REGISTRY_KEY, JSON.stringify(registry), {
     metadata: { generatedAt: registry.generatedAt }
   });
   return registry;
+}
+
+async function refreshAndResearch(env: Env): Promise<void> {
+  const registry = await refreshRegistry(env);
+  const candidates = await lowConfidenceModels(env.SIRAYA_METADATA, registry, 5);
+  for (const model of candidates) {
+    try {
+      await researchModel(env, registry, model.id);
+    } catch {
+      // A failed enrichment must not fail the daily registry refresh.
+    }
+  }
+}
+
+async function handleAdmin(request: Request, env: Env, url: URL): Promise<Response> {
+  if (!env.ADMIN_TOKEN) return json({ error: "admin_disabled" }, 503);
+  if (!hasBearerToken(request, env.ADMIN_TOKEN)) return json({ error: "unauthorized" }, 401);
+  try {
+    const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+    const registry = await getRegistry(env);
+    if (parts[1] === "models" && parts[2]) {
+      const modelId = parts[2];
+      if (parts[3] === "research" && request.method === "POST") {
+        return json(await researchModel(env, registry, modelId));
+      }
+      if (request.method === "GET") return json(await adminModel(env.SIRAYA_METADATA, registry, modelId));
+      if (request.method === "PATCH") {
+        const result = await saveModelOverride(env.SIRAYA_METADATA, registry, modelId, asRecord(await request.json()));
+        await rebuildEffectiveRegistry(env);
+        return json(result);
+      }
+      if (request.method === "DELETE") {
+        await deleteModelOverride(env.SIRAYA_METADATA, registry, modelId);
+        await rebuildEffectiveRegistry(env);
+        return json({ ok: true, modelId });
+      }
+    }
+    if (parts[1] === "research" && parts[2] && parts[3] && request.method === "POST") {
+      const researchId = Number(parts[2]);
+      if (!Number.isInteger(researchId)) return json({ error: "invalid_research_id" }, 400);
+      const approve = parts[3] === "approve";
+      if (!approve && parts[3] !== "reject") return json({ error: "not_found" }, 404);
+      const result = await reviewResearch(env.SIRAYA_METADATA, registry, researchId, approve);
+      if (approve) await rebuildEffectiveRegistry(env);
+      return json(result);
+    }
+    return json({ error: "not_found" }, 404);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const status = message.includes("Unknown model") ? 404 : message.includes("changed since") ? 409 : 400;
+    return json({ error: "admin_request_failed", message }, status);
+  }
+}
+
+async function rebuildEffectiveRegistry(env: Env): Promise<SirayaRegistry> {
+  const current = await env.SIRAYA_REGISTRY.get<SirayaRegistry>(REGISTRY_KEY, "json");
+  if (!current) return refreshRegistry(env);
+  const pricingById = new Map(current.models.map(model => [model.id, {
+    pricing: model.pricing,
+    pricingUrl: model.pricingUrl,
+    documentationUrl: model.documentationUrl
+  }]));
+  const baseline = buildRegistry(current.models.map(model => model.raw), current.source);
+  baseline.publicSources = current.publicSources;
+  baseline.models = baseline.models.map(model => ({ ...model, ...pricingById.get(model.id) }));
+  const effective = await applyStoredOverrides(baseline, env.SIRAYA_METADATA);
+  await env.SIRAYA_REGISTRY.put(REGISTRY_KEY, JSON.stringify(effective), {
+    metadata: { generatedAt: effective.generatedAt }
+  });
+  return effective;
 }
 
 async function refreshFromHttp(request: Request, env: Env): Promise<Response> {
@@ -542,7 +629,7 @@ function json(body: unknown, status = 200): Response {
 function cors(response: Response): Response {
   const next = new Response(response.body, response);
   next.headers.set("access-control-allow-origin", "*");
-  next.headers.set("access-control-allow-methods", "GET,POST,OPTIONS");
+  next.headers.set("access-control-allow-methods", "GET,POST,PATCH,DELETE,OPTIONS");
   next.headers.set("access-control-allow-headers", "authorization,content-type");
   return next;
 }

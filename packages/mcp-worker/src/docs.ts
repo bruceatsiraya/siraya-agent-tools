@@ -1,4 +1,4 @@
-type DocsRoute = "/" | "/docs" | "/docs/sdk" | "/docs/mcp" | "/docs/registry" | "/docs/deploy";
+type DocsRoute = "/" | "/docs" | "/docs/sdk" | "/docs/mcp" | "/docs/registry" | "/docs/metadata" | "/docs/deploy";
 
 interface Page {
   title: string;
@@ -282,6 +282,48 @@ GET /v1/models?include_capabilities=true</code></pre>
       `)}
     `
   },
+  "/docs/metadata": {
+    title: "Model Metadata Administration",
+    eyebrow: "Human-reviewed enrichment",
+    description: "Edit every model metadata field, research public sources, and preserve approved corrections across daily refreshes.",
+    body: `
+      ${section("How Overrides Work", `
+        <p>The live registry is compiled from automatic inference, approved web research, and manual field overrides. Manual values win and remain in Cloudflare D1 when the daily model refresh rebuilds KV.</p>
+        <pre><code>manual override &gt; approved research &gt; automatic inference</code></pre>
+        <p>The upstream model ID and raw SIRAYA response are read-only because changing them would make agents call a model that does not exist.</p>
+      `)}
+      ${section("Edit A Model", `
+        <ol>
+          <li>Open <a href="/models">Models</a> and expand a model row.</li>
+          <li>Select <strong>Edit metadata</strong> and enter <code>ADMIN_TOKEN</code>.</li>
+          <li>Enable <strong>Manual</strong> only for fields that should stop inheriting automatic values.</li>
+          <li>Save. The Worker recompiles KV immediately, so Models, MCP, and SDK use the same result.</li>
+        </ol>
+      `)}
+      ${section("Public Web Research", `
+        <p><strong>Research model</strong> searches public pages, fetches source text, and sends the evidence to a SIRAYA model for strict JSON classification. Results remain pending until an administrator approves or rejects them.</p>
+        <p>The search provider order is SIRAYA Tavily, optional direct Tavily, Bing RSS, then DuckDuckGo. Invalid enum values and malformed pricing are discarded before a candidate can be approved.</p>
+      `)}
+      ${section("Storage And Audit", `
+        <table><tbody>
+          <tr><th>D1 database</th><td><code>siraya-model-metadata</code></td></tr>
+          <tr><th>Overrides</th><td><code>model_overrides</code></td></tr>
+          <tr><th>Research</th><td><code>model_research</code></td></tr>
+          <tr><th>History</th><td><code>model_audit_log</code></td></tr>
+          <tr><th>Compiled registry</th><td>Cloudflare KV</td></tr>
+        </tbody></table>
+      `)}
+      ${section("Admin API", `
+        <pre><code>GET    /admin/models/:modelId
+PATCH  /admin/models/:modelId
+DELETE /admin/models/:modelId
+POST   /admin/models/:modelId/research
+POST   /admin/research/:researchId/approve
+POST   /admin/research/:researchId/reject</code></pre>
+        <p>Every endpoint requires <code>Authorization: Bearer &lt;ADMIN_TOKEN&gt;</code>.</p>
+      `)}
+    `
+  },
   "/docs/deploy": {
     title: "Cloudflare Deployment",
     eyebrow: "Operations",
@@ -294,6 +336,7 @@ GET /v1/models?include_capabilities=true</code></pre>
             <tr><th>Custom domain</th><td><code>https://siraya-mcp.bruceatsiraya.xyz</code></td></tr>
             <tr><th>Cron</th><td><code>0 18 * * *</code> UTC, daily 02:00 Asia/Singapore</td></tr>
             <tr><th>KV namespace</th><td><code>7f90e1d5c1fd4ba0857271f12b5caa46</code></td></tr>
+            <tr><th>D1 database</th><td><code>siraya-model-metadata</code></td></tr>
           </tbody>
         </table>
       `)}
@@ -333,6 +376,7 @@ function layout(page: Page, route: DocsRoute): string {
     ["/docs/sdk", "SDK"],
     ["/docs/mcp", "MCP"],
     ["/docs/registry", "Registry"],
+    ["/docs/metadata", "Metadata"],
     ["/docs/deploy", "Deploy"]
   ];
   return `<!doctype html>
