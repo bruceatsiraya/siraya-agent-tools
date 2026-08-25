@@ -3,10 +3,11 @@ account_id = "ab9ae397d12c06738bd3c9b984633a33"
 main = "src/index.ts"
 compatibility_date = "2026-07-15"
 
-workers_dev = false
+workers_dev = true
+preview_urls = false
 
 routes = [
-  { pattern = "siraya-mcp.bruceatsiraya.xyz", custom_domain = true }
+  { pattern = "siraya-mcp.bruceatsiraya.xyz/*", zone_name = "bruceatsiraya.xyz" }
 ]
 
 [vars]
