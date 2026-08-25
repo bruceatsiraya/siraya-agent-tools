@@ -1,4 +1,5 @@
 name = "siraya-mcp-worker"
+account_id = "ab9ae397d12c06738bd3c9b984633a33"
 main = "src/index.ts"
 compatibility_date = "2026-07-15"
 
@@ -14,13 +15,13 @@ SIRAYA_ENRICHMENT_MODEL = "deepseek-v4-pro"
 
 [[kv_namespaces]]
 binding = "SIRAYA_REGISTRY"
-id = "7f90e1d5c1fd4ba0857271f12b5caa46"
-preview_id = "f49c57aad20c48fa988e213e04259f6c"
+id = "660bb2ea88d54a4e8fc2896033cf3d0c"
+preview_id = "358ad061f635493bbef51b0141a8f741"
 
 [[d1_databases]]
 binding = "SIRAYA_METADATA"
 database_name = "siraya-model-metadata"
-database_id = "a1cd818a-ecac-4050-b768-b706354b6de7"
+database_id = "4fb97140-daf5-42d2-837a-cc3378811abc"
 
 [triggers]
 crons = ["0 18 * * *"]

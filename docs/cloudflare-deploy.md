@@ -10,10 +10,12 @@ Current deployed Worker:
 
 ```text
 Worker: siraya-mcp-worker
+Cloudflare account: Sry_int (ab9ae397d12c06738bd3c9b984633a33)
 Custom domain: https://siraya-mcp.bruceatsiraya.xyz
 Cron: 0 18 * * *
-KV namespace: 7f90e1d5c1fd4ba0857271f12b5caa46
-Preview KV namespace: f49c57aad20c48fa988e213e04259f6c
+KV namespace: 660bb2ea88d54a4e8fc2896033cf3d0c
+Preview KV namespace: 358ad061f635493bbef51b0141a8f741
+D1 database: 4fb97140-daf5-42d2-837a-cc3378811abc
 ```
 
 ## Prerequisites
@@ -21,6 +23,10 @@ Preview KV namespace: f49c57aad20c48fa988e213e04259f6c
 - Cloudflare account access for the `bruceatsiraya.xyz` zone.
 - Wrangler authenticated locally.
 - SIRAYA API key.
+
+The deployment is pinned to its Cloudflare account with `account_id` in
+`packages/mcp-worker/wrangler.toml`. This prevents Wrangler from accidentally
+using resource IDs from another authenticated account.
 
 ## 1. Install Dependencies
 
