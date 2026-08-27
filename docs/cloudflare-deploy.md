@@ -12,7 +12,7 @@ Current deployed Worker:
 Worker: siraya-mcp-worker
 Cloudflare account: Sry_int (ab9ae397d12c06738bd3c9b984633a33)
 Public URL: https://siraya-mcp.bruceatsiraya.xyz
-Worker URL: https://siraya-mcp-worker.sry-int-ab9.workers.dev
+Worker URL: disabled; production is available only through the public FQDN
 Cron: 0 18 * * *
 KV namespace: 660bb2ea88d54a4e8fc2896033cf3d0c
 Preview KV namespace: 358ad061f635493bbef51b0141a8f741
@@ -116,20 +116,15 @@ curl -X POST https://siraya-mcp.bruceatsiraya.xyz/refresh \
 `wrangler.toml` uses:
 
 ```toml
-workers_dev = true
+workers_dev = false
 preview_urls = false
 routes = [
-  { pattern = "siraya-mcp.bruceatsiraya.xyz/*", zone_name = "bruceatsiraya.xyz" }
+  { pattern = "siraya-mcp.bruceatsiraya.xyz", custom_domain = true }
 ]
 ```
 
-The `bruceatsiraya.xyz` DNS zone contains this proxied record:
-
-```text
-CNAME  siraya-mcp  siraya-mcp-worker.sry-int-ab9.workers.dev  Proxied
-```
-
-This standard Worker Route configuration is intentional. During the 2026-08-25
-account migration, Cloudflare displayed the Custom Domain as configured but did
-not publish its managed DNS record. A proxied CNAME plus zone route avoids that
-provisioning dependency while preserving the same public FQDN.
+Cloudflare manages the DNS record and TLS certificate for the Custom Domain.
+Do not create a separate A, AAAA, or CNAME record for `siraya-mcp`; an existing
+record with that name prevents Wrangler from provisioning the Custom Domain.
+The `workers.dev` and preview URLs are disabled so production traffic uses the
+stable public FQDN only.
