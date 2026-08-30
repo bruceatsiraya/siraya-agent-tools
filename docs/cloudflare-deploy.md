@@ -19,6 +19,25 @@ Preview KV namespace: 358ad061f635493bbef51b0141a8f741
 D1 database: 4fb97140-daf5-42d2-837a-cc3378811abc
 ```
 
+## Production Deployment
+
+Production is deployed by GitHub Actions. A push to `main` automatically runs
+type checking and deploys the Worker when application or workflow files change.
+The workflow can also be started manually from **Actions > Deploy SIRAYA MCP to
+Cloudflare > Run workflow**.
+
+Configure these GitHub Actions secrets in the `production` environment or at
+repository level:
+
+```text
+CLOUDFLARE_ACCOUNT_ID=ab9ae397d12c06738bd3c9b984633a33
+CLOUDFLARE_API_TOKEN=<Cloudflare API token with Workers deployment access>
+```
+
+`SIRAYA_API_KEY`, `ADMIN_TOKEN`, and application credentials remain Cloudflare
+Worker secrets. They are not stored in GitHub and are preserved across GitHub
+deployments.
+
 ## Prerequisites
 
 - Cloudflare account access for the `bruceatsiraya.xyz` zone.
@@ -73,7 +92,10 @@ npx.cmd wrangler@latest secret put SIRAYA_API_KEY --config packages/mcp-worker/w
 npx.cmd wrangler@latest secret put ADMIN_TOKEN --config packages/mcp-worker/wrangler.toml
 ```
 
-## 4. Deploy
+## 4. Deploy Manually (Recovery Only)
+
+Normal production deployments use GitHub Actions. Run this command only for
+recovery when GitHub Actions is unavailable:
 
 ```bash
 npx wrangler@latest deploy --config packages/mcp-worker/wrangler.toml
