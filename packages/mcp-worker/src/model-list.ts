@@ -3,11 +3,15 @@ import type { SirayaModelCapability, SirayaRegistry } from "@siraya/agent";
 export const headers = [
   "No.", "Family", "Model", "Model ID (API Parameter)", "Category", "Input Modalities",
   "Output Modality", "Context Window", "Max Input", "Max Output", "RPM", "TPM",
-  "TTFT (s)", "TPS", "Discount Factor", "API Format"
+  "TTFT (s)", "TPS", "Discount Factor"
 ];
 
 export type Cell = string | number | null;
 type Source = "Infron" | "OpenRouter";
+
+export const editableFields = ["rpm", "tpm", "ttft", "tps", "discount"] as const;
+type EditableField = typeof editableFields[number];
+type ManualValues = Partial<Record<EditableField, number | null>>;
 
 interface Spec {
   model_id: string;
@@ -45,11 +49,13 @@ export function modelCategory(model: SirayaModelCapability): string {
 }
 
 export async function modelListRows(db: D1Database, registry: SirayaRegistry, admin: boolean) {
-  const [specs, measurements] = await Promise.all([
+  const [specs, measurements, overrides] = await Promise.all([
     db.prepare("SELECT model_id,rpm,tpm,discount,baseline FROM model_list_specs").all<Spec>(),
-    db.prepare("SELECT * FROM model_list_benchmarks").all<Benchmark>()
+    db.prepare("SELECT * FROM model_list_benchmarks").all<Benchmark>(),
+    db.prepare("SELECT model_id,values_json FROM model_list_overrides").all<{ model_id: string; values_json: string }>()
   ]);
   const byId = new Map(specs.results.map(spec => [spec.model_id, spec]));
+  const manualById = new Map(overrides.results.map(row => [row.model_id, JSON.parse(row.values_json) as ManualValues]));
   const bySource = new Map(measurements.results.map(metric => [metric.model_id + "|" + metric.source, metric]));
   return registry.models.filter(visibleModel).map(model => {
     const spec = byId.get(model.id);
@@ -60,6 +66,9 @@ export async function modelListRows(db: D1Database, registry: SirayaRegistry, ad
     const openRouter = bySource.get(model.id + "|OpenRouter");
     const ttft = infron?.ttft ?? openRouter?.ttft ?? seed[12] ?? null;
     const tps = infron?.tps ?? openRouter?.tps ?? seed[13] ?? null;
+    const manual = manualById.get(model.id) ?? {};
+    const limit = (field: "rpm" | "tpm" | "discount") => Object.hasOwn(manual, field) ? manual[field] ?? null : spec?.[field] ?? null;
+    const automatic = { ttft: category === "LLM" ? ttft : null, tps: category === "LLM" ? tps : null };
     const compatible = category.toLowerCase() === model.category || category === "LLM";
     const output: Record<string, string> = { Video: "video", Image: "image", Audio: "audio", Embedding: "embedding", Rerank: "ranking" };
     const family = seed[1] ?? (/kling/i.test(model.id) ? "Kling" : /happyhorse/i.test(model.id) ? "HappyHorse" :
@@ -71,11 +80,10 @@ export async function modelListRows(db: D1Database, registry: SirayaRegistry, ad
       metricNumber(raw.context_window ?? raw.context_length) ?? seed[7] ?? null,
       metricNumber(raw.max_input_tokens) ?? seed[8] ?? null,
       metricNumber(raw.max_output_tokens ?? raw.max_completion_tokens) ?? seed[9] ?? null,
-      spec?.rpm ?? null, spec?.tpm ?? null, category === "LLM" ? ttft : null,
-      category === "LLM" ? tps : null, admin ? spec?.discount ?? null : null,
-      compatible ? model.apiFormats.join(", ") || null : seed[15] ?? null
+      limit("rpm"), limit("tpm"), manual.ttft ?? automatic.ttft,
+      manual.tps ?? automatic.tps, admin ? limit("discount") : null
     ];
-    return { cells, infron, openRouter };
+    return { cells, infron, openRouter, manual, automatic };
   }).sort((a, b) => String(a.cells[1]).localeCompare(String(b.cells[1])) ||
     String(a.cells[4]).localeCompare(String(b.cells[4])) ||
     String(a.cells[3]).localeCompare(String(b.cells[3]), "en", { numeric: true }))
@@ -91,18 +99,48 @@ function nullableNumber(value: unknown, name: string, isDiscount = false): numbe
   return value;
 }
 
-export async function saveListSpec(db: D1Database, id: string, body: Record<string, unknown>) {
-  const { rpm, tpm, discount } = body;
-  await db.prepare(`INSERT INTO model_list_specs (model_id,rpm,tpm,discount,edited) VALUES (?,?,?,?,1)
-    ON CONFLICT(model_id) DO UPDATE SET rpm=excluded.rpm,tpm=excluded.tpm,discount=excluded.discount,edited=1`)
-    .bind(id, nullableNumber(rpm, "RPM"), nullableNumber(tpm, "TPM"), nullableNumber(discount, "discount", true)).run();
+export async function saveListSpecs(db: D1Database, registry: SirayaRegistry, edits: unknown) {
+  if (!Array.isArray(edits) || !edits.length || edits.length > registry.models.length) {
+    throw new Error("Invalid number of model edits.");
+  }
+  const allowed = new Set(registry.models.filter(visibleModel).map(model => model.id));
+  const seen = new Set<string>();
+  const statements = edits.map(edit => {
+    const { id, values } = edit ?? {};
+    if (typeof id !== "string" || !allowed.has(id) || seen.has(id) ||
+        !values || typeof values !== "object" || Array.isArray(values)) {
+      throw new Error("Invalid or duplicate model edit.");
+    }
+    seen.add(id);
+    const fields = editableFields.filter(field => Object.hasOwn(values, field));
+    if (!fields.length || fields.length !== Object.keys(values).length) throw new Error("Invalid model fields.");
+
+    const patch: ManualValues = {};
+    for (const field of fields) {
+      const value = values[field];
+      if (field === "ttft" || field === "tps") {
+        if (value !== null && (typeof value !== "number" || !Number.isFinite(value) || value < 0)) {
+          throw new Error("Invalid " + field);
+        }
+        patch[field] = value;
+      } else {
+        patch[field] = nullableNumber(value, field, field === "discount");
+      }
+    }
+    const updates = fields.map(field => `'$.${field}', json_extract(excluded.values_json, '$.${field}')`).join(", ");
+    return db.prepare(`INSERT INTO model_list_overrides (model_id,values_json) VALUES (?,?)
+      ON CONFLICT(model_id) DO UPDATE SET values_json=json_set(model_list_overrides.values_json, ${updates})`)
+      .bind(id, JSON.stringify(patch));
+  });
+  await db.batch(statements);
+  return statements.length;
 }
 
 export async function importListSpecs(db: D1Database, value: unknown) {
   if (!Array.isArray(value) || !value.length || value.length > 500) throw new Error("Expected 1–500 workbook rows.");
   const seen = new Set<string>();
   const statements = value.map((row: unknown) => {
-    if (!Array.isArray(row) || row.length !== headers.length || row.some(cell =>
+    if (!Array.isArray(row) || (row.length !== headers.length && row.length !== headers.length + 1) || row.some(cell =>
       cell !== null && typeof cell !== "number" && (typeof cell !== "string" || cell.length > 512))) {
       throw new Error("Invalid workbook row.");
     }

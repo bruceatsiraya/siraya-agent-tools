@@ -10,7 +10,7 @@ import {
   type SirayaModelCapability,
   type SirayaRegistry
 } from "@siraya/agent";
-import { modelListRows, visibleModel, saveListSpec, importListSpecs } from "./model-list.js";
+import { modelListRows, visibleModel, saveListSpecs, importListSpecs } from "./model-list.js";
 import { modelListPage, modelListScript } from "./model-list-page.js";
 import { modelListImportScript } from "./model-list-import.js";
 import { exportModelList } from "./model-list-xlsx.js";
@@ -295,6 +295,11 @@ async function handleAdmin(request: Request, env: Env, url: URL): Promise<Respon
   try {
     const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
     if (parts[1] === "model-list" && parts.length === 3) {
+      if (parts[2] === "save" && request.method === "POST") {
+        const { registry } = await getListRegistry(env);
+        const body = asRecord(await request.json());
+        return json({ count: await saveListSpecs(env.SIRAYA_METADATA, registry, body.rows) });
+      }
       if (parts[2] === "import" && request.method === "POST") {
         const body = asRecord(await request.json());
         return json({ count: await importListSpecs(env.SIRAYA_METADATA, body.rows) });
@@ -304,7 +309,7 @@ async function handleAdmin(request: Request, env: Env, url: URL): Promise<Respon
         if (!registry.models.some(model => model.id === parts[2] && visibleModel(model))) {
           return json({ error: "not_found" }, 404);
         }
-        await saveListSpec(env.SIRAYA_METADATA, parts[2], asRecord(await request.json()));
+        await saveListSpecs(env.SIRAYA_METADATA, registry, [{ id: parts[2], values: asRecord(await request.json()) }]);
         return json({ ok: true });
       }
     }

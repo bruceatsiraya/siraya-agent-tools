@@ -15,3 +15,8 @@ CREATE TABLE IF NOT EXISTS model_list_benchmarks (
   observed_at TEXT NOT NULL,
   PRIMARY KEY (model_id, source)
 );
+
+CREATE TABLE IF NOT EXISTS model_list_overrides (
+  model_id TEXT PRIMARY KEY,
+  values_json TEXT NOT NULL
+);
