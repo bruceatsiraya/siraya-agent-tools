@@ -16,6 +16,7 @@ import { modelListImportScript } from "./model-list-import.js";
 import { exportModelList } from "./model-list-xlsx.js";
 import { updateListBenchmarks } from "./model-list-benchmarks.js";
 import { renderDocs } from "./docs.js";
+import { salesRoute } from "./sales.js";
 import { renderModelCatalog } from "./catalog.js";
 import { authenticateAdmin, login, logout, renderAdminPortal } from "./auth.js";
 import { enrichPublicInfo } from "./public-info.js";
@@ -54,6 +55,17 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }));
+    if (url.pathname === "/sales" || url.pathname.startsWith("/sales/") || url.pathname.startsWith("/quote/")) {
+      try {
+        return await salesRoute(request, env, async () => {
+          const { registry } = await getListRegistry(env);
+          return modelListRows(env.SIRAYA_METADATA, registry);
+        });
+      } catch (error) {
+        console.error("Sales quote unavailable", error);
+        return new Response("報價服務暫時無法使用，請稍後重試。", { status: 503, headers: { "cache-control": "no-store" } });
+      }
+    }
     if (url.pathname === "/admin/auth/login" && request.method === "POST") return login(request, env);
     if (url.pathname === "/admin/auth/logout" && request.method === "POST") return logout(request, env);
     if (url.pathname === "/admin/auth/me" && request.method === "GET") {
