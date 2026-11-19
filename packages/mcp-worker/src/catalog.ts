@@ -1145,11 +1145,11 @@ function catalogStyles(): string {
     .model-detail { grid-template-columns: minmax(240px, .8fr) minmax(260px, 1.2fr); padding: 18px 46px 22px; }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
-    @media (max-width: 1100px) {
+    @media (max-width: 1400px) {
       .model-row summary { grid-template-columns: minmax(220px, 1fr) 120px 90px; }
       .model-row summary > .chips { grid-column: 1 / -1; margin: 0; padding-left: 40px; }
     }
-    @media (max-width: 820px) {
+    @media (max-width: 1160px) {
       .shell { display: block; }
       .sidebar { position: static; height: auto; padding: 14px 18px; border-right: 0; border-bottom: 1px solid var(--line); }
       .brand { margin-bottom: 12px; }
@@ -1170,7 +1170,7 @@ function catalogStyles(): string {
       .filter-toggle span { display: grid; place-items: center; min-width: 18px; height: 18px; border-radius: 9px; background: #e7eeeb; font-size: 10px; }
       .filter-toggle.has-filters span { background: var(--teal); color: #fff; }
     }
-    @media (max-width: 620px) {
+    @media (max-width: 1000px) {
       main { padding: 20px 14px 48px; }
       .page-header { grid-template-columns: 1fr; gap: 12px; align-items: start; }
       .sync-panel { justify-items: start; }
