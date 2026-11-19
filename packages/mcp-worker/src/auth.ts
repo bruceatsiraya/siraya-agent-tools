@@ -118,7 +118,8 @@ export function renderAdminPortal(identity: AdminIdentity | null): Response {
       <h1>Model administration</h1>
       <p class="welcome">Signed in as <strong>${escapeHtml(identity.username)}</strong></p>
       <div class="actions">
-        <a class="primary" href="/models?manage=1">Manage models</a>
+        <a class="primary" href="/model-list?manage=1">Manage Model List</a>
+        <a href="/models?manage=1">Manage model metadata</a>
         <a href="/docs/metadata">Administration guide</a>
         <button id="logout" type="button">Sign out</button>
       </div>

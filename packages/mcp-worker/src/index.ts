@@ -10,6 +10,11 @@ import {
   type SirayaModelCapability,
   type SirayaRegistry
 } from "@siraya/agent";
+import { modelListRows, visibleModel, saveListSpec, importListSpecs } from "./model-list.js";
+import { modelListPage, modelListScript } from "./model-list-page.js";
+import { modelListImportScript } from "./model-list-import.js";
+import { exportModelList } from "./model-list-xlsx.js";
+import { updateListBenchmarks } from "./model-list-benchmarks.js";
 import { renderDocs } from "./docs.js";
 import { renderModelCatalog } from "./catalog.js";
 import { authenticateAdmin, login, logout, renderAdminPortal } from "./auth.js";
@@ -58,6 +63,14 @@ export default {
     if ((url.pathname === "/admin" || url.pathname === "/admin/") && request.method === "GET") {
       return renderAdminPortal(await authenticateAdmin(request, env));
     }
+    if (url.pathname === "/model-list.js" && request.method === "GET") {
+      return new Response(modelListScript + modelListImportScript, {
+        headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "no-cache" }
+      });
+    }
+    if (["/model-list", "/model-list.xlsx"].includes(url.pathname) && request.method === "GET") {
+      return serveModelList(request, env, url);
+    }
     if (url.pathname === "/models" && request.method === "GET" && wantsHtml(request, url)) {
       const wantsAdmin = url.searchParams.get("manage") === "1";
       const identity = wantsAdmin ? await authenticateAdmin(request, env) : null;
@@ -86,10 +99,39 @@ export default {
     return json({ error: "not_found" }, 404);
   },
 
-  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
-    ctx.waitUntil(refreshAndResearch(env));
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    if (event.cron === "0 1 * * MON") {
+      ctx.waitUntil(getListRegistry(env).then(({ registry }) => updateListBenchmarks(env.SIRAYA_METADATA, registry)));
+    } else {
+      ctx.waitUntil(refreshAndResearch(env));
+    }
   }
 };
+
+async function getListRegistry(env: Env) {
+  try {
+    return { registry: await applyStoredOverrides(await fetchBaseRegistry(env), env.SIRAYA_METADATA), live: true };
+  } catch (error) {
+    console.error("Live Model List refresh failed", error instanceof Error ? error.name : "unknown");
+    const cached = await env.SIRAYA_REGISTRY.get<SirayaRegistry>(REGISTRY_KEY, "json");
+    if (!cached) throw new Error("No SIRAYA model catalog available.");
+    return { registry: cached, live: false };
+  }
+}
+
+async function serveModelList(request: Request, env: Env, url: URL): Promise<Response> {
+  const admin = url.searchParams.get("manage") === "1";
+  if (admin && !await authenticateAdmin(request, env)) return Response.redirect(new URL("/admin", url).href, 302);
+  try {
+    const { registry, live } = await getListRegistry(env);
+    const rows = await modelListRows(env.SIRAYA_METADATA, registry, admin);
+    return url.pathname.endsWith(".xlsx") ? exportModelList(rows.map(row => row.cells)) :
+      modelListPage(rows, registry.generatedAt, live, admin);
+  } catch (error) {
+    console.error("Model List unavailable", error);
+    return new Response("Model List is temporarily unavailable.", { status: 503 });
+  }
+}
 
 function wantsHtml(request: Request, url: URL): boolean {
   if (url.searchParams.get("format") === "json") return false;
@@ -209,18 +251,24 @@ async function getRegistry(env: Env, refresh = false, fallbackApiKey?: string): 
   return refreshRegistry(env, fallbackApiKey);
 }
 
-async function refreshRegistry(env: Env, fallbackApiKey?: string): Promise<SirayaRegistry> {
+async function fetchBaseRegistry(env: Env, fallbackApiKey?: string): Promise<SirayaRegistry> {
   const apiKey = env.SIRAYA_API_KEY ?? fallbackApiKey;
   if (!apiKey) throw new Error("A SIRAYA API key is required to refresh the model registry.");
   const baseUrl = trimRight(env.SIRAYA_BASE_URL ?? DEFAULT_BASE_URL, "/");
   const response = await fetch(`${baseUrl}/models`, {
-    headers: { authorization: `Bearer ${apiKey}` }
+    headers: { authorization: `Bearer ${apiKey}` },
+    signal: AbortSignal.timeout(8000)
   });
   if (!response.ok) {
-    throw new Error(`SIRAYA /models failed: ${response.status} ${await response.text()}`);
+    throw new Error(`SIRAYA /models failed: ${response.status}`);
   }
   const payload = await response.json() as { data: SirayaModel[] };
-  const inferred = await enrichPublicInfo(buildRegistry(payload.data, `${baseUrl}/models`));
+  if (!Array.isArray(payload.data)) throw new Error("Invalid SIRAYA catalog.");
+  return buildRegistry(payload.data, `${baseUrl}/models`);
+}
+
+async function refreshRegistry(env: Env, fallbackApiKey?: string): Promise<SirayaRegistry> {
+  const inferred = await enrichPublicInfo(await fetchBaseRegistry(env, fallbackApiKey));
   const registry = await applyStoredOverrides(inferred, env.SIRAYA_METADATA);
   await env.SIRAYA_REGISTRY.put(REGISTRY_KEY, JSON.stringify(registry), {
     metadata: { generatedAt: registry.generatedAt }
@@ -246,6 +294,20 @@ async function handleAdmin(request: Request, env: Env, url: URL): Promise<Respon
   if (identity.method === "session" && !isSameOrigin(request, url)) return json({ error: "invalid_origin" }, 403);
   try {
     const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+    if (parts[1] === "model-list" && parts.length === 3) {
+      if (parts[2] === "import" && request.method === "POST") {
+        const body = asRecord(await request.json());
+        return json({ count: await importListSpecs(env.SIRAYA_METADATA, body.rows) });
+      }
+      if (request.method === "PATCH") {
+        const { registry } = await getListRegistry(env);
+        if (!registry.models.some(model => model.id === parts[2] && visibleModel(model))) {
+          return json({ error: "not_found" }, 404);
+        }
+        await saveListSpec(env.SIRAYA_METADATA, parts[2], asRecord(await request.json()));
+        return json({ ok: true });
+      }
+    }
     const registry = await getRegistry(env);
     if (parts[1] === "models" && parts[2]) {
       const modelId = parts[2];

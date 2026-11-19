@@ -50,6 +50,12 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Apply Model List database migration
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 execute siraya-model-metadata --remote --config packages/mcp-worker/wrangler.toml --file packages/mcp-worker/migrations/0003_model_list.sql
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
         with:

@@ -374,6 +374,7 @@ function layout(page: Page, route: DocsRoute): string {
   const navItems: Array<[string, string]> = [
     ["/", "Overview"],
     ["/models", "Models"],
+    ["/model-list", "Model List"],
     ["/docs/sdk", "SDK"],
     ["/docs/mcp", "MCP"],
     ["/docs/registry", "Registry"],
