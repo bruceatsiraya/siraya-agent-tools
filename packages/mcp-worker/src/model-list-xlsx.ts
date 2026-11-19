@@ -1,4 +1,4 @@
-import { headers, type Cell } from "./model-list.js";
+import { headers, referenceNotes, type Cell } from "./model-list.js";
 
 const encoder = new TextEncoder();
 
@@ -68,21 +68,43 @@ export function exportModelList(rows: Cell[][]): Response {
   const ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
   const rel = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
   const pkg = "http://schemas.openxmlformats.org/package/2006/relationships";
-  const body = [headers, ...rows].map((row, ri) => {
+  const banner = ["SIRAYA Model Router | Model List", ...referenceNotes,
+    "Discount Factor is a multiplier. For example, 0.88 means 88% of list price."];
+  const sheetRows = [...banner.map(value => [value]), headers, ...rows];
+  const body = sheetRows.map((row, ri) => {
     const cells = row.map((value, ci) => {
-      if (value === null) return "";
       const ref = String.fromCharCode(65 + ci) + (ri + 1);
-      return typeof value === "number" ? `<c r="${ref}"><v>${value}</v></c>` :
-        `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xml(value)}</t></is></c>`;
+      const style = ri === 0 ? 1 : ri < 4 ? 2 : ri === 4 ? 3 : 4 + (ri % 2) * 3 +
+        (typeof value === "number" ? ["Discount Factor", "TTFT (s)", "TPS"].includes(headers[ci]) ? 2 : 1 : 0);
+      if (value === null) return `<c r="${ref}" s="${style}"/>`;
+      return typeof value === "number" ? `<c r="${ref}" s="${style}"><v>${value}</v></c>` :
+        `<c r="${ref}" s="${style}" t="inlineStr"><is><t xml:space="preserve">${xml(value)}</t></is></c>`;
     }).join("");
-    return `<row r="${ri + 1}">${cells}</row>`;
+    return `<row r="${ri + 1}" ht="${ri === 0 ? 34 : ri === 4 ? 25 : 20}" customHeight="1">${cells}</row>`;
   }).join("");
+  const fonts = [
+    '<font><sz val="11"/><name val="Calibri"/><color rgb="FF17263C"/></font>',
+    '<font><b/><sz val="20"/><name val="Calibri"/><color rgb="FFFFFFFF"/></font>',
+    '<font><b/><sz val="11"/><name val="Calibri"/><color rgb="FFFFFFFF"/></font>'
+  ];
+  const fills = ['<fill><patternFill patternType="none"/></fill>', '<fill><patternFill patternType="gray125"/></fill>',
+    ...["112C4B", "EAF2FB", "23547F", "F4F8FC"].map(color =>
+      `<fill><patternFill patternType="solid"><fgColor rgb="FF${color}"/><bgColor indexed="64"/></patternFill></fill>`)];
+  const xf = (font: number, fill: number, number: number) =>
+    `<xf numFmtId="${number}" fontId="${font}" fillId="${fill}" borderId="0" xfId="0" applyFont="1" applyFill="1" applyNumberFormat="1" applyAlignment="1"><alignment vertical="center"/></xf>`;
+  const styles = [xf(0, 0, 0), xf(1, 2, 0), xf(0, 3, 0), xf(2, 4, 0),
+    ...[0, 5].flatMap(fill => [xf(0, fill, 0), xf(0, fill, 3), xf(0, fill, 164)])];
+  const widths = [7, 17, 32, 43, 18, 15, 24, 22, 18, 16, 16, 16, 18, 13, 13];
+  const columns = widths.map((width, index) =>
+    `<col min="${index + 1}" max="${index + 1}" width="${width}" customWidth="1"/>`).join("");
+  const merges = banner.map((_, index) => `<mergeCell ref="A${index + 1}:O${index + 1}"/>`).join("");
   return new Response(zip({
-    "[Content_Types].xml": '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>',
+    "[Content_Types].xml": '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>',
     "_rels/.rels": `<Relationships xmlns="${pkg}"><Relationship Id="rId1" Type="${rel}/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
     "xl/workbook.xml": `<workbook xmlns="${ns}" xmlns:r="${rel}"><sheets><sheet name="Model List" sheetId="1" r:id="rId1"/></sheets></workbook>`,
-    "xl/_rels/workbook.xml.rels": `<Relationships xmlns="${pkg}"><Relationship Id="rId1" Type="${rel}/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`,
-    "xl/worksheets/sheet1.xml": `<worksheet xmlns="${ns}"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="2" max="3" width="23" customWidth="1"/><col min="4" max="4" width="40" customWidth="1"/><col min="5" max="15" width="19" customWidth="1"/></cols><sheetData>${body}</sheetData><autoFilter ref="A1:O${rows.length + 1}"/></worksheet>`
+    "xl/_rels/workbook.xml.rels": `<Relationships xmlns="${pkg}"><Relationship Id="rId1" Type="${rel}/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="${rel}/styles" Target="styles.xml"/></Relationships>`,
+    "xl/styles.xml": `<styleSheet xmlns="${ns}"><numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00##"/></numFmts><fonts count="${fonts.length}">${fonts.join("")}</fonts><fills count="${fills.length}">${fills.join("")}</fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${styles.length}">${styles.join("")}</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`,
+    "xl/worksheets/sheet1.xml": `<worksheet xmlns="${ns}"><sheetViews><sheetView showGridLines="0" workbookViewId="0"><pane ySplit="5" topLeftCell="A6" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${columns}</cols><sheetData>${body}</sheetData><autoFilter ref="A5:O${rows.length + 5}"/><mergeCells count="${banner.length}">${merges}</mergeCells></worksheet>`
   }), {
     headers: {
       "content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

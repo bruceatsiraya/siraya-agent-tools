@@ -1,11 +1,16 @@
 import type { SirayaModelCapability, SirayaRegistry } from "@siraya/agent";
 
 export const headers = [
-  "No.", "Family", "Model", "Model ID (API Parameter)", "Category", "Input Modalities",
+  "No.", "Family", "Model", "Model ID (API Parameter)", "Discount Factor", "Category", "Input Modalities",
   "Output Modality", "Context Window", "Max Input", "Max Output", "RPM", "TPM",
-  "TTFT (s)", "TPS", "Discount Factor"
+  "TTFT (s)", "TPS"
 ];
 
+export const discountColumn = headers.indexOf("Discount Factor");
+export const referenceNotes = [
+  "TTFT and TPS are short-window online benchmark statistics for reference only.",
+  "RPM and TPM are for reference only and do not guarantee actual rate limits."
+];
 export type Cell = string | number | null;
 type Source = "Infron" | "OpenRouter";
 
@@ -48,7 +53,7 @@ export function modelCategory(model: SirayaModelCapability): string {
   return model.category === "text" ? "LLM" : model.category[0].toUpperCase() + model.category.slice(1);
 }
 
-export async function modelListRows(db: D1Database, registry: SirayaRegistry, admin: boolean) {
+export async function modelListRows(db: D1Database, registry: SirayaRegistry) {
   const [specs, measurements, overrides] = await Promise.all([
     db.prepare("SELECT model_id,rpm,tpm,discount,baseline FROM model_list_specs").all<Spec>(),
     db.prepare("SELECT * FROM model_list_benchmarks").all<Benchmark>(),
@@ -71,21 +76,21 @@ export async function modelListRows(db: D1Database, registry: SirayaRegistry, ad
     const automatic = { ttft: category === "LLM" ? ttft : null, tps: category === "LLM" ? tps : null };
     const compatible = category.toLowerCase() === model.category || category === "LLM";
     const output: Record<string, string> = { Video: "video", Image: "image", Audio: "audio", Embedding: "embedding", Rerank: "ranking" };
-    const family = seed[1] ?? (/kling/i.test(model.id) ? "Kling" : /happyhorse/i.test(model.id) ? "HappyHorse" :
+    const family = model.id.toLowerCase() === "dola-seedream-5.5" ? "BytePlus" : seed[1] ?? (/kling/i.test(model.id) ? "Kling" : /happyhorse/i.test(model.id) ? "HappyHorse" :
       /^(wan|.*-wan)[\d.-]/i.test(model.id) ? "Wan" : /veo/i.test(model.id) ? "Google" : families[model.family] ?? "Other");
     const cells: Cell[] = [
-      null, family, seed[2] ?? model.id, model.id, category,
+      null, family, seed[2] ?? model.id, model.id, limit("discount"), category,
       compatible ? model.inputModalities.join(", ") || null : seed[5] ?? null,
       output[category] ?? (model.outputModalities.join(", ") || null),
       metricNumber(raw.context_window ?? raw.context_length) ?? seed[7] ?? null,
       metricNumber(raw.max_input_tokens) ?? seed[8] ?? null,
       metricNumber(raw.max_output_tokens ?? raw.max_completion_tokens) ?? seed[9] ?? null,
       limit("rpm"), limit("tpm"), manual.ttft ?? automatic.ttft,
-      manual.tps ?? automatic.tps, admin ? limit("discount") : null
+      manual.tps ?? automatic.tps
     ];
-    return { cells, infron, openRouter, manual, automatic };
+    return { cells, category, infron, openRouter, manual, automatic };
   }).sort((a, b) => String(a.cells[1]).localeCompare(String(b.cells[1])) ||
-    String(a.cells[4]).localeCompare(String(b.cells[4])) ||
+    a.category.localeCompare(b.category) ||
     String(a.cells[3]).localeCompare(String(b.cells[3]), "en", { numeric: true }))
     .map((row, index) => { row.cells[0] = index + 1; return row; });
 }
@@ -97,6 +102,18 @@ function nullableNumber(value: unknown, name: string, isDiscount = false): numbe
     throw new Error("Invalid " + name);
   }
   return value;
+}
+
+export function applyExportDiscounts(rows: Awaited<ReturnType<typeof modelListRows>>, payload: unknown): Cell[][] {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error("Invalid discounts.");
+  const discounts = payload as Record<string, unknown>;
+  return rows.map(({ cells }) => {
+    const id = String(cells[3]);
+    if (!Object.hasOwn(discounts, id)) return cells;
+    const copy = [...cells];
+    copy[discountColumn] = nullableNumber(discounts[id], "discount", true);
+    return copy;
+  });
 }
 
 export async function saveListSpecs(db: D1Database, registry: SirayaRegistry, edits: unknown) {

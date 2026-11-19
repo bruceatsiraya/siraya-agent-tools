@@ -10,7 +10,7 @@ import {
   type SirayaModelCapability,
   type SirayaRegistry
 } from "@siraya/agent";
-import { modelListRows, visibleModel, saveListSpecs, importListSpecs } from "./model-list.js";
+import { modelListRows, visibleModel, saveListSpecs, importListSpecs, applyExportDiscounts } from "./model-list.js";
 import { modelListPage, modelListScript } from "./model-list-page.js";
 import { modelListImportScript } from "./model-list-import.js";
 import { exportModelList } from "./model-list-xlsx.js";
@@ -68,7 +68,8 @@ export default {
         headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "no-cache" }
       });
     }
-    if (["/model-list", "/model-list.xlsx"].includes(url.pathname) && request.method === "GET") {
+    if ((["/model-list", "/model-list.xlsx"].includes(url.pathname) && request.method === "GET") ||
+        (url.pathname === "/model-list.xlsx" && request.method === "POST")) {
       return serveModelList(request, env, url);
     }
     if (url.pathname === "/models" && request.method === "GET" && wantsHtml(request, url)) {
@@ -121,12 +122,22 @@ async function getListRegistry(env: Env) {
 
 async function serveModelList(request: Request, env: Env, url: URL): Promise<Response> {
   const admin = url.searchParams.get("manage") === "1";
-  if (admin && !await authenticateAdmin(request, env)) return Response.redirect(new URL("/admin", url).href, 302);
+  const exporting = url.pathname.endsWith(".xlsx");
   try {
+    const identity = !exporting || admin ? await authenticateAdmin(request, env) : null;
+    if (admin && !identity) return Response.redirect(new URL("/admin", url).href, 302);
+    if (request.method === "POST" && !isSameOrigin(request, url)) return json({ error: "invalid_origin" }, 403);
     const { registry, live } = await getListRegistry(env);
-    const rows = await modelListRows(env.SIRAYA_METADATA, registry, admin);
-    return url.pathname.endsWith(".xlsx") ? exportModelList(rows.map(row => row.cells)) :
-      modelListPage(rows, registry.generatedAt, live, admin);
+    const rows = await modelListRows(env.SIRAYA_METADATA, registry);
+    if (!exporting) return modelListPage(rows, registry.generatedAt, live, admin, Boolean(identity));
+    if (request.method === "GET") return exportModelList(rows.map(row => row.cells));
+    let cells;
+    try {
+      cells = applyExportDiscounts(rows, asRecord(await request.json()).discounts);
+    } catch {
+      return json({ error: "invalid_discounts" }, 400);
+    }
+    return exportModelList(cells);
   } catch (error) {
     console.error("Model List unavailable", error);
     return new Response("Model List is temporarily unavailable.", { status: 503 });
