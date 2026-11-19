@@ -82,7 +82,7 @@ async function readWorkbook(file) {
   const shared = elements(await documentAt("xl/sharedStrings.xml"), "si")
     .map(item => elements(item, "t").map(text => text.textContent).join(""));
   const fields = ["no", "family", "model", "modelidapiparameter", "category", "inputmodalities",
-    "outputmodality", "contextwindow", "maxinput", "maxoutput", "rpm", "tpm", "ttft", "tps", "discountfactor", "apiformat"];
+    "outputmodality", "contextwindow", "maxinput", "maxoutput", "rpm", "tpm", "ttft", "tps", "discountfactor"];
   const key = value => String(value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
   const number = value => {
     if (typeof value === "number" || value === null) return value;

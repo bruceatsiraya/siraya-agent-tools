@@ -82,7 +82,7 @@ export function exportModelList(rows: Cell[][]): Response {
     "_rels/.rels": `<Relationships xmlns="${pkg}"><Relationship Id="rId1" Type="${rel}/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
     "xl/workbook.xml": `<workbook xmlns="${ns}" xmlns:r="${rel}"><sheets><sheet name="Model List" sheetId="1" r:id="rId1"/></sheets></workbook>`,
     "xl/_rels/workbook.xml.rels": `<Relationships xmlns="${pkg}"><Relationship Id="rId1" Type="${rel}/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`,
-    "xl/worksheets/sheet1.xml": `<worksheet xmlns="${ns}"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="2" max="3" width="23" customWidth="1"/><col min="4" max="4" width="40" customWidth="1"/><col min="5" max="16" width="19" customWidth="1"/></cols><sheetData>${body}</sheetData><autoFilter ref="A1:P${rows.length + 1}"/></worksheet>`
+    "xl/worksheets/sheet1.xml": `<worksheet xmlns="${ns}"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="2" max="3" width="23" customWidth="1"/><col min="4" max="4" width="40" customWidth="1"/><col min="5" max="15" width="19" customWidth="1"/></cols><sheetData>${body}</sheetData><autoFilter ref="A1:O${rows.length + 1}"/></worksheet>`
   }), {
     headers: {
       "content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
