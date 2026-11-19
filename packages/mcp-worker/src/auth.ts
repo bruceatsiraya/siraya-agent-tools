@@ -1,3 +1,4 @@
+import { siteSidebar, siteStyles } from "./site-shell.js";
 export interface AuthEnv {
   ADMIN_TOKEN?: string;
   SIRAYA_METADATA: D1Database;
@@ -113,7 +114,7 @@ export async function logout(request: Request, env: AuthEnv): Promise<Response> 
 
 export function renderAdminPortal(identity: AdminIdentity | null): Response {
   const body = identity ? `
-    <main class="portal">
+    <main class="portal" id="site-main">
       <p class="eyebrow">SIRAYA internal</p>
       <h1>Model administration</h1>
       <p class="welcome">Signed in as <strong>${escapeHtml(identity.username)}</strong></p>
@@ -129,7 +130,7 @@ export function renderAdminPortal(identity: AdminIdentity | null): Response {
       await fetch("/admin/auth/logout", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
       location.reload();
     });</script>` : `
-    <main class="login">
+    <main class="login" id="site-main">
       <p class="eyebrow">SIRAYA internal</p>
       <h1>Sign in</h1>
       <p>Use your model administration account.</p>
@@ -155,7 +156,7 @@ export function renderAdminPortal(identity: AdminIdentity | null): Response {
       }
     });</script>`;
   return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>SIRAYA Administration</title><style>${portalStyles()}</style></head><body>${body}</body></html>`, {
+    <title>SIRAYA Administration</title><style>${portalStyles()}${siteStyles}</style></head><body class="site-app">${siteSidebar("/admin")}${body}</body></html>`, {
     headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" }
   });
 }

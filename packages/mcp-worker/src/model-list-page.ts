@@ -1,3 +1,4 @@
+import { siteSidebar, siteStyles } from "./site-shell.js";
 import { headers, referenceNotes, type modelListRows } from "./model-list.js";
 
 type Row = Awaited<ReturnType<typeof modelListRows>>[number];
@@ -48,9 +49,8 @@ export function modelListPage(rows: Row[], generatedAt: string, live: boolean, a
   td:nth-child(4){font-family:ui-monospace,monospace;color:#274469}td input{width:100px;padding:4px}
   tbody tr:hover{background:#f6faff}summary{cursor:pointer}details small{white-space:pre-line;color:#455b75}
   #status{min-height:24px}#status[data-error]{color:#a32d25}
-  </style></head><body><header><nav><strong>SIRAYA Model Router</strong><a href="/">Home</a><a href="/models">Model catalog</a>
-  <a href="${admin ? "/admin" : "/model-list?manage=1"}">${admin ? "Administration" : "Manage list"}</a></nav></header>
-  <main data-shared-discounts="${signedIn}"><h1>Model List</h1><p>${live ? "Live SIRAYA catalog checked" : "Last available SIRAYA catalog"} · ${html(generatedAt)}</p>
+  ${siteStyles}</style></head><body class="site-app">${siteSidebar(admin ? "/model-list?manage=1" : "/model-list")}
+  <main id="site-main" data-shared-discounts="${signedIn}"><h1>Model List</h1><p>${live ? "Live SIRAYA catalog checked" : "Last available SIRAYA catalog"} · ${html(generatedAt)}</p>
   <div class="toolbar"><input id="search" type="search" placeholder="Search model, ID, or family" aria-label="Search models">
   <select id="category" aria-label="Category"><option value="">All categories</option>
   ${categories.map(category => `<option>${html(category)}</option>`).join("")}</select>

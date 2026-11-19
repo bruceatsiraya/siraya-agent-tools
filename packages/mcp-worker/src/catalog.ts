@@ -1,3 +1,4 @@
+import { siteSidebar, siteStyles } from "./site-shell.js";
 import type { SirayaRegistry } from "@siraya/agent";
 
 export function renderModelCatalog(registry: SirayaRegistry, options: { adminMode?: boolean } = {}): Response {
@@ -14,28 +15,13 @@ export function renderModelCatalog(registry: SirayaRegistry, options: { adminMod
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Model Catalog | SIRAYA</title>
   <meta name="description" content="Daily-refreshed catalog of models available through SIRAYA Model Router, grouped by vendor, category, and capability.">
-  <style>${catalogStyles()}</style>
+  <style>${catalogStyles()}${siteStyles}</style>
 </head>
-<body>
+<body class="site-app">
   <div class="shell">
-    <aside class="sidebar">
-      <a class="brand" href="/">
-        <span class="mark">S</span>
-        <span><strong>SIRAYA</strong><small>Agent Tools</small></span>
-      </a>
-      <nav aria-label="Documentation">
-        <a href="/">Overview</a>
-        <a class="active" href="/models">Models</a>
-        <a href="/docs/sdk">SDK</a>
-        <a href="/docs/mcp">MCP</a>
-        <a href="/docs/registry">Registry</a>
-        <a href="/docs/metadata">Metadata</a>
-        <a href="/docs/deploy">Deploy</a>
-      </nav>
-      <div class="status"><span class="dot"></span><span>Daily registry live</span></div>
-    </aside>
+    ${siteSidebar(adminMode ? "/models?manage=1" : "/models")}
 
-    <main>
+    <main id="site-main">
       <header class="page-header">
         <div>
           <p class="eyebrow">Model Router</p>

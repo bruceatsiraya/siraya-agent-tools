@@ -1,3 +1,4 @@
+import { siteSidebar, siteStyles } from "./site-shell.js";
 type DocsRoute = "/" | "/docs" | "/docs/sdk" | "/docs/mcp" | "/docs/registry" | "/docs/metadata" | "/docs/deploy";
 
 interface Page {
@@ -371,16 +372,6 @@ function normalizeRoute(pathname: string): DocsRoute | undefined {
 }
 
 function layout(page: Page, route: DocsRoute): string {
-  const navItems: Array<[string, string]> = [
-    ["/", "Overview"],
-    ["/models", "Models"],
-    ["/model-list", "Model List"],
-    ["/docs/sdk", "SDK"],
-    ["/docs/mcp", "MCP"],
-    ["/docs/registry", "Registry"],
-    ["/docs/metadata", "Metadata"],
-    ["/docs/deploy", "Deploy"]
-  ];
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -388,24 +379,12 @@ function layout(page: Page, route: DocsRoute): string {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${page.title} | SIRAYA</title>
   <meta name="description" content="${page.description}">
-  <style>${styles()}</style>
+  <style>${styles()}${siteStyles}</style>
 </head>
-<body>
+<body class="site-app">
   <div class="shell">
-    <aside class="sidebar">
-      <a class="brand" href="/">
-        <span class="mark">S</span>
-        <span><strong>SIRAYA</strong><small>Agent Tools</small></span>
-      </a>
-      <nav>
-        ${navItems.map(([href, label]) => `<a class="${href === route ? "active" : ""}" href="${href}">${label}</a>`).join("")}
-      </nav>
-      <div class="status">
-        <span class="dot"></span>
-        <span>Cloudflare Worker live</span>
-      </div>
-    </aside>
-    <main>
+    ${siteSidebar(route)}
+    <main id="site-main">
       <header class="page-header">
         <p class="eyebrow">${page.eyebrow}</p>
         <h1>${page.title}</h1>
