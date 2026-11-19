@@ -25,4 +25,4 @@ database_name = "siraya-model-metadata"
 database_id = "4fb97140-daf5-42d2-837a-cc3378811abc"
 
 [triggers]
-crons = ["0 18 * * *"]
+crons = ["0 18 * * *", "0 1 * * MON"]
