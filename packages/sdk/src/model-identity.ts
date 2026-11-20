@@ -27,7 +27,12 @@ function recognizedTextModel(id:string):boolean {
 /** Upstream identity wins over routing aliases and the generic owned_by=openai placeholder. */
 export function identifyModel(modelId: string): ModelIdentity | undefined {
   const id=modelId.toLowerCase().replace(/^(?:(?:nsfw|uncensored|siraya|dola|fw)[-_/])+/g,'');
-  const entry=(provider:string,category:SirayaModelCategory,family:ModelIdentity['family'],source:string,operation?:ModelIdentity['operation']):ModelIdentity=>({provider,category,family,source,operation});
+  const entry=(provider:string,category:SirayaModelCategory,family:ModelIdentity['family'],source:string,operation?:ModelIdentity['operation']):ModelIdentity=>{
+    const unfamiliarKling=provider==='kuaishou'&&!/^kling-(?:tts|avatar|face-recognition|lip-sync|(?:o\d+|\d+(?:\.\d+)*)(?:-(?:pro|standard|turbo|omni|flash|master))*)$/.test(id);
+    const unfamiliarHappyHorse=/^happyhorse/.test(id)&&!/^happyhorse-\d+(?:\.\d+)*-(?:i2v|r2v|t2v|video-edit)$/.test(id);
+    const unfamiliarWan=/^wan\d/.test(id)&&!/^wan\d+(?:\.\d+)*-(?:i2v|r2v|t2v|videoedit|video)(?:-(?:prime|pro|spicy))*$/.test(id);
+    return unfamiliarKling||unfamiliarHappyHorse||unfamiliarWan?{provider,category:'unknown',family:'other',source}:{provider,category,family,source,operation};
+  };
   if(/^kling(?:[-_]|$)/.test(id)) return entry('kuaishou',id==='kling-tts'?'audio':'video',id==='kling-tts'?'audio':'video','https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/kling/',id==='kling-face-recognition'?'face_detection':id==='kling-tts'?'text_to_speech':undefined);
   if(/^happyhorse[-_]/.test(id)) return entry('alibaba','video','video','https://www.alibabacloud.com/help/en/model-studio/happyhorse-1-0-i2v');
   if(/^wan\d/.test(id)) return entry('alibaba','video','video','https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/wan/');

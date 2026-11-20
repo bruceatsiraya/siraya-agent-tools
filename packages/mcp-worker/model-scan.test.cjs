@@ -14,6 +14,11 @@ test('unfamiliar models are pending independently of the generic openai owner',(
   }
   const knownVendor=inferCapabilities({id:'gemini-99-mystery-render',owned_by:'openai'});
   assert.equal(knownVendor.providerName,'Google');assert.equal(knownVendor.category,'unknown');assert.equal(knownVendor.identityCheck.vendor,'confirmed');
+  for(const id of ['kling-future-image','happyhorse-9-new-operation','wan9.0-new-operation']){
+    const m=inferCapabilities({id});assert.equal(m.category,'unknown');assert.equal(m.identityCheck.vendor,'confirmed');assert.equal(m.identityCheck.status,'pending');
+  }
+  const newKlingImage=inferCapabilities({id:'kling-future-image',category:'image'});
+  assert.equal(newKlingImage.category,'image');assert.equal(newKlingImage.identityCheck.status,'resolved');
 });
 test('upstream structured evidence can resolve identity and conflicts stay pending',()=>{
   const m=inferCapabilities({id:'brand-new-image-generator',provider:'Google',category:'image',output_modalities:['text','image']});
