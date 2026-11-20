@@ -17,6 +17,7 @@ import { exportModelList } from "./model-list-xlsx.js";
 import { updateListBenchmarks } from "./model-list-benchmarks.js";
 import { renderDocs } from "./docs.js";
 import { salesRoute } from "./sales.js";
+import { correctModelIdentities } from "./model-corrections.js";
 import { siteLanguageScript } from "./site-language.js";
 import { renderModelCatalog } from "./catalog.js";
 import { authenticateAdmin, login, logout, renderAdminPortal } from "./auth.js";
@@ -132,7 +133,7 @@ async function getListRegistry(env: Env) {
     console.error("Live Model List refresh failed", error instanceof Error ? error.name : "unknown");
     const cached = await env.SIRAYA_REGISTRY.get<SirayaRegistry>(REGISTRY_KEY, "json");
     if (!cached) throw new Error("No SIRAYA model catalog available.");
-    return { registry: cached, live: false };
+    return { registry: correctModelIdentities(cached), live: false };
   }
 }
 
@@ -273,7 +274,7 @@ async function callTool(
 async function getRegistry(env: Env, refresh = false, fallbackApiKey?: string): Promise<SirayaRegistry> {
   if (!refresh) {
     const cached = await env.SIRAYA_REGISTRY.get<SirayaRegistry>(REGISTRY_KEY, "json");
-    if (cached) return cached;
+    if (cached) return correctModelIdentities(cached);
   }
   return refreshRegistry(env, fallbackApiKey);
 }

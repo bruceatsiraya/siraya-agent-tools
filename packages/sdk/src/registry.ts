@@ -197,6 +197,7 @@ function inferFamily(id: string): SirayaModelCapability["family"] {
 }
 
 function inferProvider(id: string, declaredProvider?: string): string {
+  if (id === "siraya-seedance-2.5-flash") return "byteplus";
   if (id.includes("siraya-") || id.includes("dola-")) return "siraya";
   if (id.includes("bytedance") || id.includes("seedance") || id.includes("seedream") || id.includes("seed-")) return "bytedance";
   if (id.includes("claude")) return "anthropic";
@@ -230,6 +231,7 @@ function inferReasoning(family: SirayaModelCapability["family"], id: string): bo
 }
 
 const PROVIDERS: Record<string, { name: string; documentationUrl: string; pricingUrl?: string }> = {
+  byteplus: { name: "BytePlus", documentationUrl: "https://www.byteplus.com/" },
   openai: { name: "OpenAI", documentationUrl: "https://platform.openai.com/docs/models", pricingUrl: "https://openai.com/api/pricing/" },
   anthropic: { name: "Anthropic", documentationUrl: "https://docs.anthropic.com/en/docs/about-claude/models/overview", pricingUrl: "https://docs.anthropic.com/en/docs/about-claude/pricing" },
   google: { name: "Google", documentationUrl: "https://ai.google.dev/gemini-api/docs/models", pricingUrl: "https://ai.google.dev/gemini-api/docs/pricing" },

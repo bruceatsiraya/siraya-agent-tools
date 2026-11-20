@@ -1,3 +1,4 @@
+import { correctModelIdentities } from './model-corrections.js';
 import {
   inferCapabilities,
   type SirayaModelCapability,
@@ -62,10 +63,10 @@ const BOOLEAN_FEATURES = new Set(["streaming", "toolCalling", "structuredOutputs
 export async function applyStoredOverrides(registry: SirayaRegistry, db: D1Database): Promise<SirayaRegistry> {
   const rows = await db.prepare("SELECT model_id, patch_json FROM model_overrides").all<Pick<OverrideRow, "model_id" | "patch_json">>();
   const patches = new Map(rows.results.map(row => [row.model_id, parseRecord(row.patch_json)]));
-  return {
+  return correctModelIdentities({
     ...registry,
     models: registry.models.map(model => applyModelPatch(model, patches.get(model.id)))
-  };
+  });
 }
 
 export async function adminModel(db: D1Database, registry: SirayaRegistry, modelId: string): Promise<Record<string, unknown>> {

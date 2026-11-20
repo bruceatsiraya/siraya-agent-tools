@@ -76,7 +76,7 @@ export async function modelListRows(db: D1Database, registry: SirayaRegistry) {
     const automatic = { ttft: category === "LLM" ? ttft : null, tps: category === "LLM" ? tps : null };
     const compatible = category.toLowerCase() === model.category || category === "LLM";
     const output: Record<string, string> = { Video: "video", Image: "image", Audio: "audio", Embedding: "embedding", Rerank: "ranking" };
-    const family = model.id.toLowerCase() === "dola-seedream-5.5" ? "BytePlus" : seed[1] ?? (/kling/i.test(model.id) ? "Kling" : /happyhorse/i.test(model.id) ? "HappyHorse" :
+    const family = ["dola-seedream-5.5", "siraya-seedance-2.5-flash"].includes(model.id.toLowerCase()) ? "BytePlus" : seed[1] ?? (/kling/i.test(model.id) ? "Kling" : /happyhorse/i.test(model.id) ? "HappyHorse" :
       /^(wan|.*-wan)[\d.-]/i.test(model.id) ? "Wan" : /veo/i.test(model.id) ? "Google" : families[model.family] ?? "Other");
     const cells: Cell[] = [
       null, family, seed[2] ?? model.id, model.id, limit("discount"), category,
