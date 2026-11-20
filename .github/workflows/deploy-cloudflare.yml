@@ -50,6 +50,9 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Verify model identities and sales pricing
+        run: node --test packages/mcp-worker/model-identities.test.cjs packages/mcp-worker/sales-pricing.test.cjs packages/mcp-worker/sales.test.cjs
+
       - name: Apply Model List database migration
         uses: cloudflare/wrangler-action@v3
         with:

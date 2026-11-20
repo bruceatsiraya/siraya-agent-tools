@@ -1,5 +1,6 @@
 export { Siraya } from "./client.js";
 export { buildRegistry, filterModels, inferCapabilities, recommendModel, validateRequest } from "./registry.js";
+export { identifyModel } from './model-identity.js';
 export { CAPABILITY_TAXONOMY } from "./taxonomy.js";
 export { stepCountIs, hasToolCall, textIncludes } from "./stop-conditions.js";
 export { tool } from "./tools.js";

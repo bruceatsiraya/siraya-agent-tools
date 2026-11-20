@@ -1,0 +1,1631 @@
+{
+  "checkedAt": "2026-11-20",
+  "scope": "All 180 model IDs returned by the production registry. Vendor means upstream model family/provider, not routing alias. Family identity does not independently certify a router alias or version's underlying checkpoint.",
+  "notes": [
+    "Face/head swap operations are documented image endpoints; their underlying upstream vendor is not publicly identified and is explicitly Unverified.",
+    "Kling face recognition is a video preprocessing utility, not an LLM or a video generator.",
+    "Existing quoted prices remain unchanged; vendor/category labels are normalized when displaying old snapshots."
+  ],
+  "models": [
+    {
+      "id": "ByteDance-Seed-SC",
+      "previousVendor": "ByteDance Seed",
+      "previousCategory": "text",
+      "vendor": "BytePlus",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/seed/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "ByteDance-Seedance-1.0-pro",
+      "previousVendor": "ByteDance Seed",
+      "previousCategory": "video",
+      "vendor": "BytePlus",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedance/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "ByteDance-Seedance-1.0-pro-fast",
+      "previousVendor": "ByteDance Seed",
+      "previousCategory": "video",
+      "vendor": "BytePlus",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedance/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "ByteDance-Seedream-4.0",
+      "previousVendor": "ByteDance Seed",
+      "previousCategory": "image",
+      "vendor": "BytePlus",
+      "category": "image",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedream/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "ByteDance-Seedream-4.5",
+      "previousVendor": "ByteDance Seed",
+      "previousCategory": "image",
+      "vendor": "BytePlus",
+      "category": "image",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedream/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "claude-fable-5",
+      "previousVendor": "Anthropic",
+      "previousCategory": "text",
+      "vendor": "Anthropic",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/claude/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "claude-fable-5.1",
+      "previousVendor": "Anthropic",
+      "previousCategory": "text",
+      "vendor": "Anthropic",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/claude/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "claude-haiku-4.5",
+      "previousVendor": "Anthropic",
+      "previousCategory": "text",
+      "vendor": "Anthropic",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/claude/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "claude-haiku-5.5",
+      "previousVendor": "Anthropic",
+      "previousCategory": "text",
+      "vendor": "Anthropic",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/claude/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "claude-opus-4.5",
+      "previousVendor": "Anthropic",
+      "previousCategory": "text",
+      "vendor": "Anthropic",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/claude/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "claude-opus-4.6",
+      "previousVendor": "Anthropic",
+      "previousCategory": "text",
+      "vendor": "Anthropic",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/claude/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "claude-opus-4.7",
+      "previousVendor": "Anthropic",
+      "previousCategory": "text",
+      "vendor": "Anthropic",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/claude/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "claude-opus-4.8",
+      "previousVendor": "Anthropic",
+      "previousCategory": "text",
+      "vendor": "Anthropic",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/claude/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "claude-opus-5",
+      "previousVendor": "Anthropic",
+      "previousCategory": "text",
+      "vendor": "Anthropic",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/claude/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "claude-opus-5.5",
+      "previousVendor": "Anthropic",
+      "previousCategory": "text",
+      "vendor": "Anthropic",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/claude/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "claude-sonnet-4.5",
+      "previousVendor": "Anthropic",
+      "previousCategory": "text",
+      "vendor": "Anthropic",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/claude/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "claude-sonnet-4.6",
+      "previousVendor": "Anthropic",
+      "previousCategory": "text",
+      "vendor": "Anthropic",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/claude/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "claude-sonnet-5",
+      "previousVendor": "Anthropic",
+      "previousCategory": "text",
+      "vendor": "Anthropic",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/claude/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "claude-sonnet-5.5",
+      "previousVendor": "Anthropic",
+      "previousCategory": "text",
+      "vendor": "Anthropic",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/claude/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "deepseek-v4-flash-0731",
+      "previousVendor": "DeepSeek",
+      "previousCategory": "text",
+      "vendor": "DeepSeek",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/deepseek/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "deepseek-v4-pro",
+      "previousVendor": "DeepSeek",
+      "previousCategory": "text",
+      "vendor": "DeepSeek",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/deepseek/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "deepseek-v4-pro-0813",
+      "previousVendor": "DeepSeek",
+      "previousCategory": "text",
+      "vendor": "DeepSeek",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/deepseek/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "deepseek-v4.1-flash",
+      "previousVendor": "DeepSeek",
+      "previousCategory": "text",
+      "vendor": "DeepSeek",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/deepseek/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "deepseek-v4.1-flash-1017",
+      "previousVendor": "DeepSeek",
+      "previousCategory": "text",
+      "vendor": "DeepSeek",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/deepseek/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "deepseek-v4.1-flash-economy",
+      "previousVendor": "DeepSeek",
+      "previousCategory": "text",
+      "vendor": "DeepSeek",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/deepseek/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "Dola-Seed-2.0-lite",
+      "previousVendor": "SIRAYA",
+      "previousCategory": "text",
+      "vendor": "BytePlus",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/seed/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "Dola-Seed-2.0-mini",
+      "previousVendor": "SIRAYA",
+      "previousCategory": "text",
+      "vendor": "BytePlus",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/seed/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "Dola-Seed-2.0-pro",
+      "previousVendor": "SIRAYA",
+      "previousCategory": "text",
+      "vendor": "BytePlus",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/seed/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "Dola-Seed-2.1-turbo",
+      "previousVendor": "SIRAYA",
+      "previousCategory": "text",
+      "vendor": "BytePlus",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/seed/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "Dola-Seedream-5.0-lite",
+      "previousVendor": "SIRAYA",
+      "previousCategory": "image",
+      "vendor": "BytePlus",
+      "category": "image",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedream/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "Dola-Seedream-5.0-pro",
+      "previousVendor": "SIRAYA",
+      "previousCategory": "image",
+      "vendor": "BytePlus",
+      "category": "image",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedream/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "Dola-Seedream-5.5",
+      "previousVendor": "SIRAYA",
+      "previousCategory": "image",
+      "vendor": "BytePlus",
+      "category": "image",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedream/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "face-swap-spicy",
+      "previousVendor": "Other",
+      "previousCategory": "text",
+      "vendor": "Unverified",
+      "category": "image",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/image-to-image/face-head-swap/",
+      "status": "upstream_vendor_unverified"
+    },
+    {
+      "id": "FW-MiniMax-M2.5",
+      "previousVendor": "MiniMax",
+      "previousCategory": "text",
+      "vendor": "MiniMax",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/minimax/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gemini-3-flash-preview",
+      "previousVendor": "Google",
+      "previousCategory": "text",
+      "vendor": "Google",
+      "category": "text",
+      "source": "https://ai.google.dev/gemini-api/docs/models",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gemini-3-pro-image",
+      "previousVendor": "Google",
+      "previousCategory": "image",
+      "vendor": "Google",
+      "category": "image",
+      "source": "https://ai.google.dev/gemini-api/docs/models",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gemini-3.1-flash-image",
+      "previousVendor": "Google",
+      "previousCategory": "image",
+      "vendor": "Google",
+      "category": "image",
+      "source": "https://ai.google.dev/gemini-api/docs/models",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gemini-3.1-flash-lite",
+      "previousVendor": "Google",
+      "previousCategory": "text",
+      "vendor": "Google",
+      "category": "text",
+      "source": "https://ai.google.dev/gemini-api/docs/models",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gemini-3.1-flash-lite-image",
+      "previousVendor": "Google",
+      "previousCategory": "image",
+      "vendor": "Google",
+      "category": "image",
+      "source": "https://ai.google.dev/gemini-api/docs/models",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gemini-3.1-pro-preview",
+      "previousVendor": "Google",
+      "previousCategory": "text",
+      "vendor": "Google",
+      "category": "text",
+      "source": "https://ai.google.dev/gemini-api/docs/models",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gemini-3.5-flash",
+      "previousVendor": "Google",
+      "previousCategory": "text",
+      "vendor": "Google",
+      "category": "text",
+      "source": "https://ai.google.dev/gemini-api/docs/models",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gemini-3.5-flash-lite",
+      "previousVendor": "Google",
+      "previousCategory": "text",
+      "vendor": "Google",
+      "category": "text",
+      "source": "https://ai.google.dev/gemini-api/docs/models",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gemini-3.7-flash",
+      "previousVendor": "Google",
+      "previousCategory": "text",
+      "vendor": "Google",
+      "category": "text",
+      "source": "https://ai.google.dev/gemini-api/docs/models",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gemini-3.8-flash",
+      "previousVendor": "Google",
+      "previousCategory": "text",
+      "vendor": "Google",
+      "category": "text",
+      "source": "https://ai.google.dev/gemini-api/docs/models",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gemini-embedding-2",
+      "previousVendor": "Google",
+      "previousCategory": "embedding",
+      "vendor": "Google",
+      "category": "embedding",
+      "source": "https://ai.google.dev/gemini-api/docs/models",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gemini-nano-banana-2.1",
+      "previousVendor": "Google",
+      "previousCategory": "image",
+      "vendor": "Google",
+      "category": "image",
+      "source": "https://ai.google.dev/gemini-api/docs/models",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gemini-omni-1.1-flash-preview",
+      "previousVendor": "Google",
+      "previousCategory": "video",
+      "vendor": "Google",
+      "category": "video",
+      "source": "https://ai.google.dev/gemini-api/docs/models",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "glm-5.2",
+      "previousVendor": "Z.ai",
+      "previousCategory": "text",
+      "vendor": "Z.ai",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/glm/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "glm-5.3",
+      "previousVendor": "Z.ai",
+      "previousCategory": "text",
+      "vendor": "Z.ai",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/glm/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "glm-5.3-flash",
+      "previousVendor": "Z.ai",
+      "previousCategory": "text",
+      "vendor": "Z.ai",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/glm/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-4.1",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-4.1-mini",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5-2025-08-07",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5-nano",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5-nano-2025-08-07",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.1",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.1-2025-11-13",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.1-codex",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.1-codex-2025-11-13",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.1-codex-max",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.1-codex-mini",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.1-codex-mini-2025-11-13",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.2-2025-12-11",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.2-codex",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.2-codex-2026-01-14",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.3-codex",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.3-codex-2026-02-24",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.4",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.4-2026-03-05",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.4-mini",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.4-mini-2026-03-17",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.4-nano",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.4-nano-2026-03-17",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.4-pro",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.4-pro-2026-03-05",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.5",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.5-2026-04-23",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.6-luna",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.6-luna-2026-07-09",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.6-sol",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.6-sol-2026-07-09",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.6-terra",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-5.6-terra-2026-07-09",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-6-astra",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-6-astra-2026-09-03",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-6-luna",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-6-sol",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-6.1-sol",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-6.2-astra",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-6.2-astra-2026-11-17",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-6.2-sol",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-6.2-sol-2026-11-17",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-image-2",
+      "previousVendor": "OpenAI",
+      "previousCategory": "image",
+      "vendor": "OpenAI",
+      "category": "image",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-image-2.5-flare",
+      "previousVendor": "OpenAI",
+      "previousCategory": "image",
+      "vendor": "OpenAI",
+      "category": "image",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "gpt-image-2.5-sunburst",
+      "previousVendor": "OpenAI",
+      "previousCategory": "image",
+      "vendor": "OpenAI",
+      "category": "image",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "grok-4-1-fast-reasoning",
+      "previousVendor": "xAI",
+      "previousCategory": "text",
+      "vendor": "xAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/grok/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "grok-4-20-non-reasoning",
+      "previousVendor": "xAI",
+      "previousCategory": "text",
+      "vendor": "xAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/grok/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "grok-4-20-reasoning",
+      "previousVendor": "xAI",
+      "previousCategory": "text",
+      "vendor": "xAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/grok/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "grok-4.3",
+      "previousVendor": "xAI",
+      "previousCategory": "text",
+      "vendor": "xAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/grok/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "grok-4.5",
+      "previousVendor": "xAI",
+      "previousCategory": "text",
+      "vendor": "xAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/grok/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "happyhorse-1.0-i2v",
+      "previousVendor": "Other",
+      "previousCategory": "text",
+      "vendor": "Alibaba Cloud",
+      "category": "video",
+      "source": "https://www.alibabacloud.com/help/en/model-studio/happyhorse-1-0-i2v",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "happyhorse-1.0-r2v",
+      "previousVendor": "Other",
+      "previousCategory": "text",
+      "vendor": "Alibaba Cloud",
+      "category": "video",
+      "source": "https://www.alibabacloud.com/help/en/model-studio/happyhorse-1-0-i2v",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "happyhorse-1.0-t2v",
+      "previousVendor": "Other",
+      "previousCategory": "text",
+      "vendor": "Alibaba Cloud",
+      "category": "video",
+      "source": "https://www.alibabacloud.com/help/en/model-studio/happyhorse-1-0-i2v",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "happyhorse-1.0-video-edit",
+      "previousVendor": "Other",
+      "previousCategory": "video",
+      "vendor": "Alibaba Cloud",
+      "category": "video",
+      "source": "https://www.alibabacloud.com/help/en/model-studio/happyhorse-1-0-i2v",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "happyhorse-1.1-i2v",
+      "previousVendor": "Other",
+      "previousCategory": "text",
+      "vendor": "Alibaba Cloud",
+      "category": "video",
+      "source": "https://www.alibabacloud.com/help/en/model-studio/happyhorse-1-0-i2v",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "happyhorse-1.1-r2v",
+      "previousVendor": "Other",
+      "previousCategory": "text",
+      "vendor": "Alibaba Cloud",
+      "category": "video",
+      "source": "https://www.alibabacloud.com/help/en/model-studio/happyhorse-1-0-i2v",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "happyhorse-1.1-t2v",
+      "previousVendor": "Other",
+      "previousCategory": "text",
+      "vendor": "Alibaba Cloud",
+      "category": "video",
+      "source": "https://www.alibabacloud.com/help/en/model-studio/happyhorse-1-0-i2v",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "head-swap-spicy",
+      "previousVendor": "Other",
+      "previousCategory": "text",
+      "vendor": "Unverified",
+      "category": "image",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/image-to-image/face-head-swap/",
+      "status": "upstream_vendor_unverified"
+    },
+    {
+      "id": "Kimi-K2.5",
+      "previousVendor": "Moonshot AI",
+      "previousCategory": "text",
+      "vendor": "Moonshot AI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/kimi/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "kimi-k2.7-code",
+      "previousVendor": "Moonshot AI",
+      "previousCategory": "text",
+      "vendor": "Moonshot AI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/kimi/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "kimi-k2.7-code-highspeed",
+      "previousVendor": "Moonshot AI",
+      "previousCategory": "text",
+      "vendor": "Moonshot AI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/kimi/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "kimi-k3",
+      "previousVendor": "Moonshot AI",
+      "previousCategory": "text",
+      "vendor": "Moonshot AI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/kimi/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "kimi-k3.1-pro",
+      "previousVendor": "Moonshot AI",
+      "previousCategory": "text",
+      "vendor": "Moonshot AI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/kimi/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "kling-2.5-turbo",
+      "previousVendor": "Other",
+      "previousCategory": "text",
+      "vendor": "Kling",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/kling/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "kling-2.6",
+      "previousVendor": "Other",
+      "previousCategory": "text",
+      "vendor": "Kling",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/kling/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "kling-3.0",
+      "previousVendor": "Other",
+      "previousCategory": "text",
+      "vendor": "Kling",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/kling/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "kling-3.0-omni",
+      "previousVendor": "Other",
+      "previousCategory": "text",
+      "vendor": "Kling",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/kling/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "kling-3.0-turbo",
+      "previousVendor": "Other",
+      "previousCategory": "text",
+      "vendor": "Kling",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/kling/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "kling-4.0",
+      "previousVendor": "Other",
+      "previousCategory": "text",
+      "vendor": "Kling",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/kling/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "kling-4.0-flash",
+      "previousVendor": "Other",
+      "previousCategory": "text",
+      "vendor": "Kling",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/kling/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "kling-avatar",
+      "previousVendor": "Other",
+      "previousCategory": "text",
+      "vendor": "Kling",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/kling/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "kling-face-recognition",
+      "previousVendor": "Other",
+      "previousCategory": "text",
+      "vendor": "Kling",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/avatar/face-recognition/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "kling-lip-sync",
+      "previousVendor": "Other",
+      "previousCategory": "text",
+      "vendor": "Kling",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/kling/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "kling-o1",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "Kling",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/kling/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "kling-tts",
+      "previousVendor": "Other",
+      "previousCategory": "audio",
+      "vendor": "Kling",
+      "category": "audio",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/avatar/text-to-speech/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "minimax-h3",
+      "previousVendor": "MiniMax",
+      "previousCategory": "text",
+      "vendor": "MiniMax",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/minimax-h3/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "minimax-h3-max",
+      "previousVendor": "MiniMax",
+      "previousCategory": "text",
+      "vendor": "MiniMax",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/minimax-h3/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "minimax-m3",
+      "previousVendor": "MiniMax",
+      "previousCategory": "text",
+      "vendor": "MiniMax",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/minimax/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "NSFW-Dola-Seed-2.1-turbo",
+      "previousVendor": "SIRAYA",
+      "previousCategory": "text",
+      "vendor": "BytePlus",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/seed/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "NSFW-Dola-Seedream-5.0-pro",
+      "previousVendor": "SIRAYA",
+      "previousCategory": "image",
+      "vendor": "BytePlus",
+      "category": "image",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedream/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "NSFW-Dola-Seedream-5.5",
+      "previousVendor": "SIRAYA",
+      "previousCategory": "image",
+      "vendor": "BytePlus",
+      "category": "image",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedream/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "NSFW-Seed-2.0-Code",
+      "previousVendor": "ByteDance Seed",
+      "previousCategory": "text",
+      "vendor": "BytePlus",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/seed/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "NSFW-Seed-2.0-lite",
+      "previousVendor": "ByteDance Seed",
+      "previousCategory": "text",
+      "vendor": "BytePlus",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/seed/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "NSFW-Seed-2.0-mini",
+      "previousVendor": "ByteDance Seed",
+      "previousCategory": "text",
+      "vendor": "BytePlus",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/seed/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "NSFW-Seed-2.0-pro",
+      "previousVendor": "ByteDance Seed",
+      "previousCategory": "text",
+      "vendor": "BytePlus",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/seed/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "NSFW-Seed-SC",
+      "previousVendor": "ByteDance Seed",
+      "previousCategory": "text",
+      "vendor": "BytePlus",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/seed/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "NSFW-Seedance-1.0-pro",
+      "previousVendor": "ByteDance Seed",
+      "previousCategory": "video",
+      "vendor": "BytePlus",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedance/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "NSFW-Seedance-1.0-pro-fast",
+      "previousVendor": "ByteDance Seed",
+      "previousCategory": "video",
+      "vendor": "BytePlus",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedance/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "NSFW-Seedance-2.0",
+      "previousVendor": "ByteDance Seed",
+      "previousCategory": "video",
+      "vendor": "BytePlus",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedance/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "NSFW-Seedance-2.0-fast",
+      "previousVendor": "ByteDance Seed",
+      "previousCategory": "video",
+      "vendor": "BytePlus",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedance/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "NSFW-Seedance-2.0-mini",
+      "previousVendor": "ByteDance Seed",
+      "previousCategory": "video",
+      "vendor": "BytePlus",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedance/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "NSFW-Seedance-2.5",
+      "previousVendor": "ByteDance Seed",
+      "previousCategory": "video",
+      "vendor": "BytePlus",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedance/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "NSFW-Seedance-2.5-flash",
+      "previousVendor": "ByteDance Seed",
+      "previousCategory": "video",
+      "vendor": "BytePlus",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedance/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "NSFW-Seedream-4.0",
+      "previousVendor": "ByteDance Seed",
+      "previousCategory": "image",
+      "vendor": "BytePlus",
+      "category": "image",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedream/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "NSFW-Seedream-4.5",
+      "previousVendor": "ByteDance Seed",
+      "previousCategory": "image",
+      "vendor": "BytePlus",
+      "category": "image",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedream/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "NSFW-Seedream-5.0-lite",
+      "previousVendor": "ByteDance Seed",
+      "previousCategory": "image",
+      "vendor": "BytePlus",
+      "category": "image",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedream/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "qwen-image-edit-spicy",
+      "previousVendor": "Alibaba Cloud",
+      "previousCategory": "image",
+      "vendor": "Alibaba Cloud",
+      "category": "image",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/qwen/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "qwen3-asr-flash",
+      "previousVendor": "Alibaba Cloud",
+      "previousCategory": "audio",
+      "vendor": "Alibaba Cloud",
+      "category": "audio",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/qwen/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "qwen3-rerank",
+      "previousVendor": "Alibaba Cloud",
+      "previousCategory": "rerank",
+      "vendor": "Alibaba Cloud",
+      "category": "rerank",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/qwen/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "qwen3.5-flash",
+      "previousVendor": "Alibaba Cloud",
+      "previousCategory": "text",
+      "vendor": "Alibaba Cloud",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/qwen/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "qwen3.5-plus",
+      "previousVendor": "Alibaba Cloud",
+      "previousCategory": "text",
+      "vendor": "Alibaba Cloud",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/qwen/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "qwen3.6-plus",
+      "previousVendor": "Alibaba Cloud",
+      "previousCategory": "text",
+      "vendor": "Alibaba Cloud",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/qwen/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "qwen3.7-flash",
+      "previousVendor": "Alibaba Cloud",
+      "previousCategory": "text",
+      "vendor": "Alibaba Cloud",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/qwen/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "qwen3.7-max",
+      "previousVendor": "Alibaba Cloud",
+      "previousCategory": "text",
+      "vendor": "Alibaba Cloud",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/qwen/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "qwen3.7-plus",
+      "previousVendor": "Alibaba Cloud",
+      "previousCategory": "text",
+      "vendor": "Alibaba Cloud",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/qwen/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "qwen3.8-27b",
+      "previousVendor": "Alibaba Cloud",
+      "previousCategory": "text",
+      "vendor": "Alibaba Cloud",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/qwen/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "qwen3.8-flash",
+      "previousVendor": "Alibaba Cloud",
+      "previousCategory": "text",
+      "vendor": "Alibaba Cloud",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/qwen/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "qwen3.8-max",
+      "previousVendor": "Alibaba Cloud",
+      "previousCategory": "text",
+      "vendor": "Alibaba Cloud",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/qwen/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "SIRAYA-Seedance-2.0",
+      "previousVendor": "SIRAYA",
+      "previousCategory": "video",
+      "vendor": "BytePlus",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedance/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "SIRAYA-Seedance-2.0-fast",
+      "previousVendor": "SIRAYA",
+      "previousCategory": "video",
+      "vendor": "BytePlus",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedance/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "SIRAYA-Seedance-2.0-mini",
+      "previousVendor": "SIRAYA",
+      "previousCategory": "video",
+      "vendor": "BytePlus",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedance/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "SIRAYA-Seedance-2.5",
+      "previousVendor": "SIRAYA",
+      "previousCategory": "video",
+      "vendor": "BytePlus",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedance/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "SIRAYA-Seedance-2.5-flash",
+      "previousVendor": "BytePlus",
+      "previousCategory": "video",
+      "vendor": "BytePlus",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedance/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "uncensored-gpt-5.1",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "uncensored-gpt-5.4",
+      "previousVendor": "OpenAI",
+      "previousCategory": "text",
+      "vendor": "OpenAI",
+      "category": "text",
+      "source": "https://docs.siraya.ai/docs/text-generation/families/gpt/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "veo-3.1-generate-001",
+      "previousVendor": "Google",
+      "previousCategory": "video",
+      "vendor": "Google",
+      "category": "video",
+      "source": "https://ai.google.dev/gemini-api/docs/models",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "wan2.2-i2v-spicy",
+      "previousVendor": "Other",
+      "previousCategory": "text",
+      "vendor": "Alibaba Cloud",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/wan/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "wan2.7-i2v",
+      "previousVendor": "Other",
+      "previousCategory": "text",
+      "vendor": "Alibaba Cloud",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/wan/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "wan2.7-i2v-spicy",
+      "previousVendor": "Other",
+      "previousCategory": "text",
+      "vendor": "Alibaba Cloud",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/wan/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "wan2.7-r2v",
+      "previousVendor": "Other",
+      "previousCategory": "text",
+      "vendor": "Alibaba Cloud",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/wan/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "wan2.7-t2v",
+      "previousVendor": "Other",
+      "previousCategory": "text",
+      "vendor": "Alibaba Cloud",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/wan/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "wan2.7-videoedit",
+      "previousVendor": "Other",
+      "previousCategory": "video",
+      "vendor": "Alibaba Cloud",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/wan/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "wan3.0-video",
+      "previousVendor": "Other",
+      "previousCategory": "video",
+      "vendor": "Alibaba Cloud",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/wan/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "wan3.0-video-prime",
+      "previousVendor": "Other",
+      "previousCategory": "video",
+      "vendor": "Alibaba Cloud",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/wan/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "wan3.0-video-prime-pro-spicy",
+      "previousVendor": "Other",
+      "previousCategory": "video",
+      "vendor": "Alibaba Cloud",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/wan/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "wan3.0-video-prime-spicy",
+      "previousVendor": "Other",
+      "previousCategory": "video",
+      "vendor": "Alibaba Cloud",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/wan/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "wan3.0-video-pro-spicy",
+      "previousVendor": "Other",
+      "previousCategory": "video",
+      "vendor": "Alibaba Cloud",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/wan/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "wan3.0-video-spicy",
+      "previousVendor": "Other",
+      "previousCategory": "video",
+      "vendor": "Alibaba Cloud",
+      "category": "video",
+      "source": "https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/wan/",
+      "status": "family_identity_checked"
+    },
+    {
+      "id": "z-image-spicy",
+      "previousVendor": "Other",
+      "previousCategory": "image",
+      "vendor": "Alibaba Cloud",
+      "category": "image",
+      "source": "https://github.com/Tongyi-MAI/Z-Image",
+      "status": "family_identity_checked"
+    }
+  ]
+}

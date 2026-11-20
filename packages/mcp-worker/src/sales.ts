@@ -1,7 +1,7 @@
 import { salesEditor, salesEditorScript, salesEditorStyles } from './sales-editor.js';
 import { siteSidebar, siteStyles } from "./site-shell.js";
 import { authenticateAdmin, type AuthEnv } from './auth.js';
-import { headers, type Cell, type modelListRows } from './model-list.js';
+import { correctQuoteIdentity, headers, type Cell, type modelListRows } from './model-list.js';
 type Rows = Awaited<ReturnType<typeof modelListRows>>;
 interface Quote { id: string; customer: string; created_at: string; expires_at: string; revoked: number; note: string; rows_json: string }
 const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
@@ -24,7 +24,7 @@ export async function salesRoute(request: Request, env: AuthEnv, loadRows: () =>
     if (!/^[a-f0-9]{48}$/.test(id ?? '')) return page('報價無法使用','<p>連結無效。</p>',404);
     const q = await env.SIRAYA_METADATA.prepare('SELECT * FROM sales_quotes WHERE id = ?').bind(id).first<Quote>();
     if (!q || q.revoked || q.expires_at <= new Date().toISOString()) return page('報價無法使用','<p>報價已到期、已停用或不存在，請聯絡銷售代表。</p>',404);
-    const cells = JSON.parse(q.rows_json) as Cell[][];
+    const cells = (JSON.parse(q.rows_json) as Cell[][]).map(correctQuoteIdentity);
     return page(q.customer+' 專屬報價', `<div class="tag">專屬模型方案</div><h1 data-no-translate>${esc(q.customer)}</h1><p>報價日期 ${esc(q.created_at.slice(0,10))} · 有效至 ${esc(q.expires_at.slice(0,10))} UTC</p><section><h2>為您配置的模型報價</h2><p>折扣係數 0.8 表示按標準價的 80% 計費，計費基準以雙方約定為準。</p>${table(headers,cells)}</section>${q.note ? `<section><h2>報價說明</h2><p data-no-translate style="white-space:pre-wrap">${esc(q.note)}</p></section>` : ''}<button onclick="window.print()">列印 / 另存 PDF</button><p>持有此連結即可查看報價，請妥善保管。</p>`);
   }
   const identity = await authenticateAdmin(request, env);

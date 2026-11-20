@@ -29,7 +29,14 @@ export function restoreDraft(value: unknown, models: PricingModel[]): PricingDra
   }
   for(const model of models) if(Object.hasOwn(raw.models,model.id)) {
     const item=raw.models[model.id]; if(!item || typeof item.selected !== 'boolean' || item.override!==null&&!validFactor(item.override)) throw new Error('Invalid factor');
-    Object.defineProperty(draft.models,model.id,{value:{selected:item.selected,override:item.override},writable:true,enumerable:true,configurable:true});
+    // Retain the effective price when an audited upstream vendor replaces a legacy brand label.
+    const id=model.id.toLowerCase();
+    const legacyVendor=/^happyhorse/.test(id)?'HappyHorse':/^wan\d/.test(id)?'Wan':/^qwen/.test(id)?'Qwen':/^glm/.test(id)?'GLM':/^kimi/.test(id)?'Kimi':null;
+    let override=item.override;
+    if(override===null && legacyVendor && legacyVendor!==model.vendor && Object.hasOwn(raw.vendors,legacyVendor)) {
+      const previous=raw.vendors[legacyVendor];if(!validFactor(previous))throw new Error('Invalid factor');override=previous;
+    }
+    Object.defineProperty(draft.models,model.id,{value:{selected:item.selected,override},writable:true,enumerable:true,configurable:true});
   }
   return draft;
 }

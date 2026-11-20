@@ -9,7 +9,7 @@ function setup(identity = null, quote = null) {
   const exports = {};
   new Function('require', 'exports', code)(name => name.includes('auth') ? {
     authenticateAdmin: async () => identity
-  } : { headers: ['Model', 'Factor'] }, exports);
+  } : { headers: ['Model', 'Factor'], correctQuoteIdentity: cells=>cells }, exports);
   const writes = [];
   const env = { SIRAYA_METADATA: { prepare(sql) { return {
     bind(...args) { writes.push({sql,args}); return this; },

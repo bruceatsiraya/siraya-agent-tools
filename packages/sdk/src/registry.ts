@@ -7,6 +7,7 @@ import type {
   ValidationIssue
 } from "./types.js";
 import { inferTaxonomy } from "./taxonomy.js";
+import { identifyModel } from './model-identity.js';
 
 const BASE_PARAMETERS = [
   "model",
@@ -178,6 +179,8 @@ export function validateRequest(model: SirayaModelCapability, request: Record<st
 }
 
 function inferFamily(id: string): SirayaModelCapability["family"] {
+  const identity = identifyModel(id);
+  if (identity) return identity.family;
   if (/^gemini-omni-/.test(id)) return "video";
   if (id.includes("nano-banana")) return "image";
   if (id.includes("seedance") || id.includes("veo") || id.includes("video")) return "video";
@@ -199,6 +202,8 @@ function inferFamily(id: string): SirayaModelCapability["family"] {
 }
 
 function inferProvider(id: string, declaredProvider?: string): string {
+  const identity = identifyModel(id);
+  if (identity) return identity.provider;
   if (id === "siraya-seedance-2.5-flash") return "byteplus";
   if (id.includes("siraya-") || id.includes("dola-")) return "siraya";
   if (id.includes("bytedance") || id.includes("seedance") || id.includes("seedream") || id.includes("seed-")) return "bytedance";
@@ -233,6 +238,8 @@ function inferReasoning(family: SirayaModelCapability["family"], id: string): bo
 }
 
 const PROVIDERS: Record<string, { name: string; documentationUrl: string; pricingUrl?: string }> = {
+  unknown: { name: "Unverified", documentationUrl: "https://docs.siraya.ai/docs/" },
+  kuaishou: { name: "Kling", documentationUrl: "https://kling.ai/" },
   byteplus: { name: "BytePlus", documentationUrl: "https://www.byteplus.com/" },
   openai: { name: "OpenAI", documentationUrl: "https://platform.openai.com/docs/models", pricingUrl: "https://openai.com/api/pricing/" },
   anthropic: { name: "Anthropic", documentationUrl: "https://docs.anthropic.com/en/docs/about-claude/models/overview", pricingUrl: "https://docs.anthropic.com/en/docs/about-claude/pricing" },

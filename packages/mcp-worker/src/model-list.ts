@@ -1,4 +1,4 @@
-import type { SirayaModelCapability, SirayaRegistry } from "@siraya/agent";
+import { identifyModel, inferCapabilities, type SirayaModelCapability, type SirayaRegistry } from "@siraya/agent";
 
 export const headers = [
   "No.", "Family", "Model", "Model ID (API Parameter)", "Discount Factor", "Category", "Input Modalities",
@@ -47,12 +47,15 @@ const families: Record<string, string> = {
 };
 
 export function modelCategory(model: SirayaModelCapability): string {
-  const id = model.id.toLowerCase();
-  if (/^gemini-omni-/.test(id)) return "Video";
-  if (id.includes("nano-banana")) return "Image";
-  if (/kling|happyhorse|seedance|(?:^|-)veo|wan.*(?:i2v|t2v)|minimax.*h3/.test(id)) return "Video";
-  if (/seedream|gpt-image|gemini.*image/.test(id)) return "Image";
-  return model.category === "text" ? "LLM" : model.category[0].toUpperCase() + model.category.slice(1);
+  const category = identifyModel(model.id)?.category ?? model.category;
+  return category === "text" ? "LLM" : category[0].toUpperCase() + category.slice(1);
+}
+
+/** Correct display metadata on old quotes while preserving every quoted price. */
+export function correctQuoteIdentity(cells: Cell[]): Cell[] {
+  if(cells.length < headers.length || typeof cells[3] !== 'string' || !identifyModel(cells[3])) return cells;
+  const model=inferCapabilities({id:cells[3]});
+  const corrected=[...cells];corrected[1]=model.providerName;corrected[5]=modelCategory(model);return corrected;
 }
 
 export async function modelListRows(db: D1Database, registry: SirayaRegistry) {
@@ -78,7 +81,7 @@ export async function modelListRows(db: D1Database, registry: SirayaRegistry) {
     const automatic = { ttft: category === "LLM" ? ttft : null, tps: category === "LLM" ? tps : null };
     const compatible = category.toLowerCase() === model.category || category === "LLM";
     const output: Record<string, string> = { Video: "video", Image: "image", Audio: "audio", Embedding: "embedding", Rerank: "ranking" };
-    const family = ["dola-seedream-5.5", "siraya-seedance-2.5-flash"].includes(model.id.toLowerCase()) ? "BytePlus" : seed[1] ?? (/kling/i.test(model.id) ? "Kling" : /happyhorse/i.test(model.id) ? "HappyHorse" :
+    const family = identifyModel(model.id) ? inferCapabilities({...model.raw,id:model.id}).providerName : seed[1] ?? (/kling/i.test(model.id) ? "Kling" : /happyhorse/i.test(model.id) ? "HappyHorse" :
       /^(wan|.*-wan)[\d.-]/i.test(model.id) ? "Wan" : /veo/i.test(model.id) ? "Google" : families[model.family] ?? "Other");
     const cells: Cell[] = [
       null, family, seed[2] ?? model.id, model.id, limit("discount"), category,

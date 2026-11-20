@@ -35,3 +35,9 @@ test('browser scripts parse and embedded model data cannot break out of JSON',()
   const language={};new Function('exports',ts.transpileModule(fs.readFileSync(__dirname+'/src/site-language.ts','utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText)(language);
   new Function(language.siteLanguageScript);
 });
+test('vendor label corrections preserve previously inherited draft discounts',()=>{
+  const current=[{id:'wan2.7-r2v',vendor:'Alibaba Cloud',base:1},{id:'happyhorse-1.1-i2v',vendor:'Alibaba Cloud',base:1},{id:'qwen3.5-plus',vendor:'Alibaba Cloud',base:1}];
+  const previous={...empty(),vendors:{Wan:0.7,HappyHorse:0.8,Qwen:0.9,'Alibaba Cloud':0.95},models:{'wan2.7-r2v':{selected:true,override:null},'happyhorse-1.1-i2v':{selected:true,override:0.65},'qwen3.5-plus':{selected:true,override:null}}};
+  const restored=restoreDraft(previous,current);
+  assert.deepEqual(current.map(m=>effectiveFactor(m,restored)),[0.7,0.65,0.9]);
+});
