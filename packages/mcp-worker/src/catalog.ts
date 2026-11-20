@@ -82,6 +82,7 @@ export function renderModelCatalog(registry: SirayaRegistry, options: { adminMod
           </div>
           <div class="result-meta">
             <strong id="result-count"></strong>
+            <label style="display:flex;align-items:center;gap:6px;font-size:14px"><input id="identity-pending" type="checkbox">Pending review only</label>
             <div class="active-filters" id="active-filters"></div>
           </div>
           <div id="model-groups" aria-live="polite"></div>
@@ -179,8 +180,8 @@ function catalogScript(adminMode: boolean): string {
     const adminMode = ${adminMode ? "true" : "false"};
     const registry = JSON.parse(document.getElementById("registry-data").textContent);
     const models = registry.models;
-    const categoryOrder = ["text", "image", "video", "audio", "embedding", "rerank"];
-    const categoryLabels = { text: "Text", image: "Image", video: "Video", audio: "Audio", embedding: "Embedding", rerank: "Rerank" };
+    const categoryOrder = ["text", "image", "video", "audio", "embedding", "rerank", "unknown"];
+    const categoryLabels = { text: "Text", image: "Image", video: "Video", audio: "Audio", embedding: "Embedding", rerank: "Rerank", unknown: "Pending review" };
     const featureLabels = {
       streaming: "Streaming",
       tool_calling: "Tool use",
@@ -208,7 +209,7 @@ function catalogScript(adminMode: boolean): string {
       content_policy_relaxed: "Relaxed content policy"
     };
     const state = {
-      query: "", category: "all", providers: new Set(), capabilities: new Set(),
+      query: "", category: "all", pending: new URLSearchParams(location.search).get('pending') === '1', providers: new Set(), capabilities: new Set(),
       tasks: new Set(), traits: new Set(), sort: "name"
     };
 
@@ -221,6 +222,9 @@ function catalogScript(adminMode: boolean): string {
     const groups = document.getElementById("model-groups");
     const resultCount = document.getElementById("result-count");
     const activeFilters = document.getElementById("active-filters");
+    const pendingFilter = document.getElementById('identity-pending');
+    pendingFilter.checked = state.pending;
+    pendingFilter.addEventListener('change',()=>{state.pending=pendingFilter.checked;render()});
     const filterRail = document.getElementById("filter-rail");
     const filterToggle = document.getElementById("filter-toggle");
     const refreshDialog = document.getElementById("refresh-dialog");
@@ -306,6 +310,8 @@ function catalogScript(adminMode: boolean): string {
     document.getElementById("sort-models").addEventListener("change", event => { state.sort = event.target.value; render(); });
     document.getElementById("clear-filters").addEventListener("click", () => {
       state.query = "";
+      state.pending = false;
+      pendingFilter.checked = false;
       state.category = "all";
       state.providers.clear();
       state.capabilities.clear();
@@ -323,7 +329,8 @@ function catalogScript(adminMode: boolean): string {
     activeFilters.addEventListener("click", event => {
       const button = event.target.closest("button[data-filter-kind]");
       if (!button) return;
-      if (button.dataset.filterKind === "category") state.category = "all";
+      if (button.dataset.filterKind === "pending") {state.pending = false; pendingFilter.checked = false;}
+      else if (button.dataset.filterKind === "category") state.category = "all";
       else state[button.dataset.filterKind].delete(button.dataset.filterValue);
       syncFilterControls();
       render();
@@ -696,6 +703,7 @@ function catalogScript(adminMode: boolean): string {
       const traitText = (model.traits || []).map(key => traitLabels[key] || key).join(" ");
       const haystack = [model.id, model.providerName, model.provider, model.family, model.category, ...model.modalities, capabilityText, taskText, traitText].join(" ").toLowerCase();
       return (!state.query || haystack.includes(state.query))
+        && (!state.pending || model.identityCheck?.status === 'pending' || model.category === 'unknown')
         && (!state.providers.size || state.providers.has(model.provider))
         && (state.category === "all" || model.category === state.category)
         && [...state.capabilities].every(value => (model.capabilityTags || []).includes(value))
@@ -737,6 +745,7 @@ function catalogScript(adminMode: boolean): string {
     function renderActiveFilters() {
       activeFilters.replaceChildren();
       const entries = [];
+      if(state.pending) entries.push(['pending','1','Pending review']);
       if (state.category !== "all") entries.push(["category", state.category, categoryLabels[state.category]]);
       state.providers.forEach(value => entries.push(["providers", value, providers.find(entry => entry[0] === value)?.[1] || value]));
       state.capabilities.forEach(value => entries.push(["capabilities", value, featureLabels[value] || value]));

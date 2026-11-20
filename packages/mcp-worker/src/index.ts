@@ -50,7 +50,7 @@ interface JsonRpcRequest {
   params?: Record<string, unknown>;
 }
 
-const REGISTRY_KEY = "registry:latest:v8";
+const REGISTRY_KEY = "registry:latest:v9";
 const DEFAULT_BASE_URL = "https://llm.siraya.ai/v1";
 
 export default {
@@ -298,6 +298,7 @@ async function fetchBaseRegistry(env: Env, fallbackApiKey?: string): Promise<Sir
 async function refreshRegistry(env: Env, fallbackApiKey?: string): Promise<SirayaRegistry> {
   const inferred = await enrichPublicInfo(await fetchBaseRegistry(env, fallbackApiKey));
   const registry = await applyStoredOverrides(inferred, env.SIRAYA_METADATA);
+  console.info('Model identity scan completed', registry.identitySummary);
   await env.SIRAYA_REGISTRY.put(REGISTRY_KEY, JSON.stringify(registry), {
     metadata: { generatedAt: registry.generatedAt }
   });

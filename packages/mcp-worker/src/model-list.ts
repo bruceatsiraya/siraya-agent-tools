@@ -47,8 +47,8 @@ const families: Record<string, string> = {
 };
 
 export function modelCategory(model: SirayaModelCapability): string {
-  const category = identifyModel(model.id)?.category ?? model.category;
-  return category === "text" ? "LLM" : category[0].toUpperCase() + category.slice(1);
+  const category = model.category;
+  return category === 'unknown' ? 'Pending review' : category === "text" ? "LLM" : category[0].toUpperCase() + category.slice(1);
 }
 
 /** Correct display metadata on old quotes while preserving every quoted price. */
@@ -81,8 +81,7 @@ export async function modelListRows(db: D1Database, registry: SirayaRegistry) {
     const automatic = { ttft: category === "LLM" ? ttft : null, tps: category === "LLM" ? tps : null };
     const compatible = category.toLowerCase() === model.category || category === "LLM";
     const output: Record<string, string> = { Video: "video", Image: "image", Audio: "audio", Embedding: "embedding", Rerank: "ranking" };
-    const family = identifyModel(model.id) ? inferCapabilities({...model.raw,id:model.id}).providerName : seed[1] ?? (/kling/i.test(model.id) ? "Kling" : /happyhorse/i.test(model.id) ? "HappyHorse" :
-      /^(wan|.*-wan)[\d.-]/i.test(model.id) ? "Wan" : /veo/i.test(model.id) ? "Google" : families[model.family] ?? "Other");
+    const family = model.identityCheck ? model.providerName : identifyModel(model.id) ? inferCapabilities({...model.raw,id:model.id}).providerName : seed[1] ?? families[model.family] ?? "Unverified";
     const cells: Cell[] = [
       null, family, seed[2] ?? model.id, model.id, limit("discount"), category,
       compatible ? model.inputModalities.join(", ") || null : seed[5] ?? null,

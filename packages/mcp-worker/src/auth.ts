@@ -122,6 +122,7 @@ export function renderAdminPortal(identity: AdminIdentity | null): Response {
         <a class="primary" href="/sales">銷售報價工作台</a>
         <a class="primary" href="/model-list?manage=1">Manage Model List</a>
         <a href="/models?manage=1">Manage model metadata</a>
+        <a href="/models?manage=1&pending=1">待確認模型</a>
         <a href="/docs/metadata">Administration guide</a>
         <button id="logout" type="button">Sign out</button>
       </div>

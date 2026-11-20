@@ -1,6 +1,6 @@
 export type SirayaApiFormat = "openai_chat" | "openai_responses" | "anthropic_messages";
 
-export type SirayaModelCategory = "text" | "image" | "video" | "audio" | "embedding" | "rerank";
+export type SirayaModelCategory = "text" | "image" | "video" | "audio" | "embedding" | "rerank" | "unknown";
 
 export type SirayaCapabilityTag =
   | "streaming"
@@ -90,6 +90,14 @@ export interface SirayaPublicSource {
 }
 
 export interface SirayaModelCapability {
+  identityCheck?: {
+    status: 'resolved' | 'pending';
+    vendor: 'confirmed' | 'pending';
+    category: 'confirmed' | 'pending';
+    source: 'family_rules' | 'upstream_metadata' | 'manual_review';
+    checkedAt?: string;
+    reason?: string;
+  };
   id: string;
   provider?: string;
   providerName: string;
@@ -130,6 +138,7 @@ export interface SirayaModelCapability {
 }
 
 export interface SirayaRegistry {
+  identitySummary?: { checkedAt: string; total: number; pending: number; pendingVendor: number; pendingCategory: number };
   object: "siraya.model_registry";
   generatedAt: string;
   source: string;

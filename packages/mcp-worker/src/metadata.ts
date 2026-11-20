@@ -44,7 +44,7 @@ const EDITABLE_FIELDS = new Set([
 ]);
 const ENUMS: Record<string, Set<string>> = {
   family: new Set(["gpt", "claude", "gemini", "deepseek", "grok", "qwen", "kimi", "glm", "minimax", "seed", "image", "video", "audio", "embedding", "rerank", "other"]),
-  category: new Set(["text", "image", "video", "audio", "embedding", "rerank"]),
+  category: new Set(["text", "image", "video", "audio", "embedding", "rerank", "unknown"]),
   capabilitySource: new Set(["declared", "inferred"]),
   lifecycle: new Set(["stable", "preview", "dated", "unknown"]),
   qualityTier: new Set(["economy", "standard", "premium", "specialized", "unknown"]),
@@ -100,6 +100,12 @@ export async function saveModelOverride(
   const resetFields = Array.isArray(input.resetFields) ? input.resetFields.map(String) : [];
   const patch = { ...previousPatch, ...changes };
   resetFields.forEach(field => delete patch[field]);
+  const identityReview={...asRecord(previousPatch._identity_review)};
+  if(Object.hasOwn(changes,'providerName')||Object.hasOwn(changes,'provider'))identityReview.vendor=true;
+  if(Object.hasOwn(changes,'category'))identityReview.category=true;
+  if(resetFields.includes('provider')||resetFields.includes('providerName'))delete identityReview.vendor;
+  if(resetFields.includes('category'))delete identityReview.category;
+  patch._identity_review=identityReview;
   if (Object.keys(changes).some(field => isTaxonomyField(field))) {
     if (!("capabilitySource" in changes)) patch.capabilitySource = "declared";
     if (!("taxonomyConfidence" in changes)) patch.taxonomyConfidence = "declared";
@@ -360,9 +366,16 @@ export async function lowConfidenceModels(db: D1Database, registry: SirayaRegist
 
 function applyModelPatch(model: SirayaModelCapability, patch?: Record<string, unknown>): SirayaModelCapability {
   if (!patch) return model;
+  const previous=model.identityCheck ?? inferCapabilities(model.raw).identityCheck!;
+  const review=asRecord(patch._identity_review);
+  const checkedVendor=typeof patch.providerName==='string'&&patch.providerName.trim()&&!['unknown','unverified','other','待確認','pending review'].includes(patch.providerName.toLowerCase());
+  const checkedCategory=typeof patch.category==='string'&&patch.category!=='unknown';
+  const vendor=review.vendor===true?(checkedVendor?'confirmed':'pending'):previous.vendor;
+  const category=review.category===true?(checkedCategory?'confirmed':'pending'):previous.category;
   return {
     ...model,
     ...patch,
+    identityCheck:{...previous,vendor,category,status:vendor==='confirmed'&&category==='confirmed'?'resolved':'pending',source:review.vendor===true||review.category===true?'manual_review':previous.source},
     features: patch.features ? { ...model.features, ...asRecord(patch.features) } : model.features,
     raw: model.raw
   } as SirayaModelCapability;
@@ -457,14 +470,14 @@ function formatResearchRow(row: ResearchRow): Record<string, unknown> {
 function researchSystemPrompt(): string {
   return `You classify AI models from public evidence. Return JSON only with keys changes, confidence, evidence.
 Allowed family: gpt, claude, gemini, deepseek, grok, qwen, kimi, glm, minimax, seed, image, video, audio, embedding, rerank, other.
-Allowed category: text, image, video, audio, embedding, rerank.
+Allowed category: text, image, video, audio, embedding, rerank, unknown.
 Allowed apiFormats: openai_chat, openai_responses, anthropic_messages.
 Allowed capabilityTags: ${[...ARRAY_ENUMS.capabilityTags].join(", ")}.
 Allowed taskTags: ${[...ARRAY_ENUMS.taskTags].join(", ")}.
 Allowed traits: ${[...ARRAY_ENUMS.traits].join(", ")}.
 pricing must be an object with currency USD or CNY, unit, numeric input/cachedInput/output, sourceUrl, observedAt; omit it when exact comparable pricing is unavailable.
 features uses boolean flags plus promptCaching as implicit, explicit, none, or unknown.
-Never invent enum values or unsupported capabilities. Omit uncertain fields. Use official vendor sources first.
+Never invent enum values or unsupported capabilities. Omit uncertain fields. Use category unknown when the category is unconfirmed; never default an unfamiliar model to text/LLM. Use official vendor sources first.
 evidence is an array of {field,url,claim}. confidence is 0 to 1.`;
 }
 

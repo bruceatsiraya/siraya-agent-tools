@@ -8,6 +8,22 @@ export interface ModelIdentity {
   operation?: 'face_detection' | 'text_to_speech';
 }
 
+function recognizedTextModel(id:string):boolean {
+  return [
+    /^claude-(?:fable|haiku|opus|sonnet)-\d+(?:\.\d+)*(?:-\d{4}-\d{2}-\d{2})?$/,
+    /^deepseek-(?:v\d+(?:\.\d+)*|r\d+)(?:-(?:flash|pro|economy|chat|reasoner|latest|exp|\d{4}-\d{2}-\d{2}|\d{4}))*$/,
+    /^gpt-\d+(?:\.\d+)*(?:-(?:mini|nano|pro|codex|max|luna|sol|terra|astra|\d{4}-\d{2}-\d{2}))*$/,
+    /^o[134](?:-(?:mini|pro|preview|\d{4}-\d{2}-\d{2}))*$/,
+    /^gemini-\d+(?:\.\d+)*-(?:flash|pro)(?:-(?:lite|preview|latest|\d{4}-\d{2}-\d{2}))*$/,
+    /^qwen\d+(?:\.\d+)*(?:-(?:flash|plus|max|\d+b|latest|preview|\d{4}-\d{2}-\d{2}))*$/,
+    /^kimi-k\d+(?:\.\d+)*(?:-(?:code|highspeed|thinking|instruct|preview|pro))*$/,
+    /^glm-\d+(?:\.\d+)*(?:-(?:flash|air|plus|instruct|preview))*$/,
+    /^grok-\d+(?:[.-]\d+)*(?:-(?:fast|reasoning|non|beta|latest))*$/,
+    /^minimax-m\d+(?:\.\d+)*(?:-(?:lightning|highspeed|instruct|preview))*$/,
+    /^(?:bytedance-)?seed-(?:sc|\d+(?:\.\d+)*)(?:-(?:code|lite|mini|pro|turbo))*$/
+  ].some(pattern=>pattern.test(id));
+}
+
 /** Upstream identity wins over routing aliases and the generic owned_by=openai placeholder. */
 export function identifyModel(modelId: string): ModelIdentity | undefined {
   const id=modelId.toLowerCase().replace(/^(?:(?:nsfw|uncensored|siraya|dola|fw)[-_/])+/g,'');
@@ -18,11 +34,12 @@ export function identifyModel(modelId: string): ModelIdentity | undefined {
   if(/^(?:minimax-h\d|hailuo[-_\d])/.test(id)) return entry('minimax','video','video','https://docs.siraya.ai/docs/api-reference/generative-model-api/text-to-video/minimax-h3/');
   if(/^(?:bytedance-)?seedance(?:[-_\d]|$)/.test(id)) return entry('byteplus','video','video','https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedance/');
   if(/^(?:bytedance-)?seedream(?:[-_\d]|$)/.test(id)) return entry('byteplus','image','image','https://docs.siraya.ai/docs/api-reference/generative-model-api/Seedream/');
-  if(/^(?:bytedance-)?seed(?:[-_\d]|$)/.test(id)) return entry('byteplus','text','seed','https://docs.siraya.ai/docs/text-generation/families/seed/');
+  if(/^(?:bytedance-)?seed(?:[-_\d]|$)/.test(id)) return entry('byteplus',recognizedTextModel(id)?'text':'unknown',recognizedTextModel(id)?'seed':'other','https://docs.siraya.ai/docs/text-generation/families/seed/');
   if(/^(?:face|head)-swap(?:[-_]|$)/.test(id)) return entry('unknown','image','image','https://docs.siraya.ai/docs/api-reference/generative-model-api/image-to-image/face-head-swap/');
   if(/^z-image(?:[-_]|$)/.test(id)) return entry('alibaba','image','image','https://github.com/Tongyi-MAI/Z-Image');
   if(/^gemini[-_]/.test(id)) {
     const category=id.includes('embedding')?'embedding':id.includes('-omni-')?'video':/nano-banana|image/.test(id)?'image':'text';
+    if(category==='text'&&!recognizedTextModel(id))return entry('google','unknown','other','https://ai.google.dev/gemini-api/docs/models');
     return entry('google',category,category==='text'?'gemini':category,'https://ai.google.dev/gemini-api/docs/models');
   }
   if(/^veo(?:[-_\d]|$)/.test(id)) return entry('google','video','video','https://ai.google.dev/gemini-api/docs/video');
@@ -30,6 +47,7 @@ export function identifyModel(modelId: string): ModelIdentity | undefined {
   if(/^gpt-image(?:[-_\d]|$)/.test(id)) return entry('openai','image','image','https://platform.openai.com/docs/guides/image-generation');
   if(/^qwen/.test(id)) {
     const category=/image/.test(id)?'image':/asr|audio|tts/.test(id)?'audio':/embed/.test(id)?'embedding':/rerank/.test(id)?'rerank':'text';
+    if(category==='text'&&!recognizedTextModel(id))return entry('alibaba','unknown','other','https://www.alibabacloud.com/help/en/model-studio/models');
     return entry('alibaba',category,category==='text'?'qwen':category,'https://www.alibabacloud.com/help/en/model-studio/models',/tts/.test(id)?'text_to_speech':undefined);
   }
   const textFamilies:Array<[RegExp,string,ModelIdentity['family'],string]>=[
@@ -38,6 +56,6 @@ export function identifyModel(modelId: string): ModelIdentity | undefined {
     [/^glm[-_]/,'zhipu','glm','glm'],[/^minimax[-_]/,'minimax','minimax','minimax'],
     [/^(?:gpt[-_]|o[134](?:[-_.]|$))/,'openai','gpt','gpt']
   ];
-  for(const [pattern,provider,family,doc] of textFamilies) if(pattern.test(id)) return entry(provider,'text',family,'https://docs.siraya.ai/docs/text-generation/families/'+doc+'/');
+  for(const [pattern,provider,family,doc] of textFamilies) if(pattern.test(id)) return entry(provider,recognizedTextModel(id)?'text':'unknown',recognizedTextModel(id)?family:'other','https://docs.siraya.ai/docs/text-generation/families/'+doc+'/');
   return undefined;
 }

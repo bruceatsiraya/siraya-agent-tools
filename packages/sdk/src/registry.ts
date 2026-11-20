@@ -7,7 +7,7 @@ import type {
   ValidationIssue
 } from "./types.js";
 import { inferTaxonomy } from "./taxonomy.js";
-import { identifyModel } from './model-identity.js';
+import { reviewScannedIdentity } from './identity-review.js';
 
 const BASE_PARAMETERS = [
   "model",
@@ -47,10 +47,11 @@ const FAMILY_PARAMETERS: Record<SirayaModelCapability["family"], string[]> = {
 
 export function inferCapabilities(model: SirayaModel): SirayaModelCapability {
   const id = model.id.toLowerCase();
-  const provider = inferProvider(id, typeof model.owned_by === "string" ? model.owned_by : undefined);
+  const identity = reviewScannedIdentity(model);
+  const provider = identity.provider;
   const providerInfo = PROVIDERS[provider] ?? PROVIDERS.other;
-  const family = inferFamily(id);
-  const category = inferCategory(family);
+  const family = identity.family;
+  const category = identity.category;
   const isImage = category === "image";
   const isVideo = category === "video";
   const isAudio = category === "audio";
@@ -91,6 +92,7 @@ export function inferCapabilities(model: SirayaModel): SirayaModelCapability {
 
   return {
     id: model.id,
+    identityCheck: identity.check,
     provider,
     providerName: providerInfo.name,
     family,
@@ -178,54 +180,6 @@ export function validateRequest(model: SirayaModelCapability, request: Record<st
   return issues;
 }
 
-function inferFamily(id: string): SirayaModelCapability["family"] {
-  const identity = identifyModel(id);
-  if (identity) return identity.family;
-  if (/^gemini-omni-/.test(id)) return "video";
-  if (id.includes("nano-banana")) return "image";
-  if (id.includes("seedance") || id.includes("veo") || id.includes("video")) return "video";
-  if (id.includes("seedream") || id.includes("imagen") || id.includes("gpt-image") || id.includes("-image")) return "image";
-  if (id.includes("asr") || id.includes("transcri") || id.includes("speech") || id.includes("tts") || id.includes("audio")) return "audio";
-  if (id.includes("embed")) return "embedding";
-  if (id.includes("rerank")) return "rerank";
-  if (id.includes("gpt") || /(^|[-/])o[134]([-.]|$)/.test(id)) return "gpt";
-  if (id.includes("claude")) return "claude";
-  if (id.includes("gemini")) return "gemini";
-  if (id.includes("deepseek")) return "deepseek";
-  if (id.includes("grok")) return "grok";
-  if (id.includes("qwen")) return "qwen";
-  if (id.includes("kimi")) return "kimi";
-  if (id.includes("glm")) return "glm";
-  if (id.includes("minimax")) return "minimax";
-  if (id.includes("seed")) return "seed";
-  return "other";
-}
-
-function inferProvider(id: string, declaredProvider?: string): string {
-  const identity = identifyModel(id);
-  if (identity) return identity.provider;
-  if (id === "siraya-seedance-2.5-flash") return "byteplus";
-  if (id.includes("siraya-") || id.includes("dola-")) return "siraya";
-  if (id.includes("bytedance") || id.includes("seedance") || id.includes("seedream") || id.includes("seed-")) return "bytedance";
-  if (id.includes("claude")) return "anthropic";
-  if (id.includes("gemini") || id.includes("imagen") || id.includes("veo")) return "google";
-  if (id.includes("deepseek")) return "deepseek";
-  if (id.includes("grok")) return "xai";
-  if (id.includes("qwen")) return "alibaba";
-  if (id.includes("kimi")) return "moonshot";
-  if (id.includes("glm")) return "zhipu";
-  if (id.includes("minimax")) return "minimax";
-  if (id.includes("gpt") || /(^|[-/])o[134]([-.]|$)/.test(id)) return "openai";
-  const normalized = declaredProvider?.toLowerCase();
-  return normalized && normalized !== "openai" ? normalized : "other";
-}
-
-function inferCategory(family: SirayaModelCapability["family"]): SirayaModelCapability["category"] {
-  if (["image", "video", "audio", "embedding", "rerank"].includes(family)) {
-    return family as SirayaModelCapability["category"];
-  }
-  return "text";
-}
 
 function inferReasoning(family: SirayaModelCapability["family"], id: string): boolean {
   if (id.includes("non-reasoning")) return false;
