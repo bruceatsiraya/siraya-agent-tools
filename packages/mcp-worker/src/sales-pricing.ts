@@ -1,5 +1,6 @@
 export interface PricingModel { id: string; vendor: string; name: string; category: string; base: number }
 export interface PricingDraft {
+  parentId?: string; templateId?: number;
   customer: string; days: number; note: string;
   vendors: Record<string, number>;
   models: Record<string, { selected: boolean; override: number | null }>;
@@ -19,10 +20,19 @@ export function applyVendor(draft: PricingDraft, models: PricingModel[], vendor:
   }
   return next;
 }
+export function vendorChanges(draft: PricingDraft, models: PricingModel[], vendors: Set<string>, value: number, relative: boolean, overwrite: boolean) {
+  return models.filter(model => vendors.has(model.vendor) && (overwrite || draft.models[model.id]?.override == null))
+    .map(model => ({
+      id: model.id,
+      factor: relative ? Number((effectiveFactor(model, draft) + value).toFixed(12)) : value
+    }));
+}
 export function restoreDraft(value: unknown, models: PricingModel[]): PricingDraft {
   const raw = value as Partial<PricingDraft> | null;
   if (!raw || typeof raw !== 'object' || typeof raw.customer !== 'string' || raw.customer.length > 120 || typeof raw.note !== 'string' || raw.note.length > 2000 || !Number.isInteger(raw.days) || raw.days! < 1 || raw.days! > 365 || !raw.vendors || typeof raw.vendors !== 'object' || !raw.models || typeof raw.models !== 'object') throw new Error('Invalid draft');
   const draft: PricingDraft = {customer:raw.customer,days:raw.days!,note:raw.note,vendors:{},models:{}};
+  if(typeof raw.parentId==="string" && /^[a-f0-9]{48}$/.test(raw.parentId)) draft.parentId=raw.parentId;
+  if(typeof raw.templateId==="number" && Number.isSafeInteger(raw.templateId) && raw.templateId>0) draft.templateId=raw.templateId;
   for(const vendor of new Set(models.map(m=>m.vendor))) if(Object.hasOwn(raw.vendors,vendor)) {
     const value = raw.vendors[vendor]; if(!validFactor(value)) throw new Error('Invalid factor');
     Object.defineProperty(draft.vendors,vendor,{value,writable:true,enumerable:true,configurable:true});

@@ -13,7 +13,7 @@ function setup(identity = null, quote = null) {
   const writes = [];
   const env = { SIRAYA_METADATA: { prepare(sql) { return {
     bind(...args) { writes.push({sql,args}); return this; },
-    first: async () => quote, run: async () => ({}), all: async () => ({results:[]})
+    first: async () => quote, run: async () => ({}), all: async () => ({results:sql.includes('sales_floors')?[{model_id:'model-id',factor:0.7}]:[]})
   }; } } };
   return { ...exports, env, writes };
 }

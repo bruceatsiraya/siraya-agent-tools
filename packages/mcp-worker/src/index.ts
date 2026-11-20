@@ -323,6 +323,7 @@ async function handleAdmin(request: Request, env: Env, url: URL): Promise<Respon
   if (identity.method === "session" && !isSameOrigin(request, url)) return json({ error: "invalid_origin" }, 403);
   try {
     const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+    if (identity.pricing_role === "sales" && request.method !== "GET" && ["model-list","models","research"].includes(parts[1])) return json({error:"product_required"},403);
     if (parts[1] === "model-list" && parts.length === 3) {
       if (parts[2] === "save" && request.method === "POST") {
         const { registry } = await getListRegistry(env);

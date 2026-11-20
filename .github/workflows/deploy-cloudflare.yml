@@ -51,20 +51,14 @@ jobs:
         run: pnpm typecheck
 
       - name: Verify model identities and sales pricing
-        run: node --test packages/mcp-worker/model-identities.test.cjs packages/mcp-worker/model-scan.test.cjs packages/mcp-worker/sales-pricing.test.cjs packages/mcp-worker/sales.test.cjs
+        run: node --test packages/mcp-worker/*.test.cjs
 
-      - name: Apply Model List database migration
+      - name: Apply pending database migrations
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: d1 execute siraya-model-metadata --remote --config packages/mcp-worker/wrangler.toml --file packages/mcp-worker/migrations/0003_model_list.sql
-      - name: Apply sales quote database migration
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: d1 execute siraya-model-metadata --remote --config packages/mcp-worker/wrangler.toml --file packages/mcp-worker/migrations/0004_sales_quotes.sql
+          command: d1 migrations apply siraya-model-metadata --remote --config packages/mcp-worker/wrangler.toml
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
         with:

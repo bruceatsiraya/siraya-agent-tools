@@ -41,3 +41,11 @@ test('vendor label corrections preserve previously inherited draft discounts',()
   const restored=restoreDraft(previous,current);
   assert.deepEqual(current.map(m=>effectiveFactor(m,restored)),[0.7,0.65,0.9]);
 });
+test('multi-vendor delta starts at each effective price and protects individual overrides',()=>{
+  const draft=applyVendor(empty(),models,'A',0.8);
+  draft.models.a.override=0.6;
+  const vendors=new Set(['A','B']);
+  assert.deepEqual(mod.vendorChanges(draft,models,vendors,-0.1,true,false),[{id:'b',factor:0.7},{id:'c',factor:0.85}]);
+  assert.equal(mod.vendorChanges(draft,models,vendors,0.2,true,true).some(c=>!mod.validFactor(c.factor)),true);
+  assert.equal(mod.vendorChanges(draft,models,vendors,0.9,false,true).length,3);
+});

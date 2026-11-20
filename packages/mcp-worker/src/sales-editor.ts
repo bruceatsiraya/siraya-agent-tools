@@ -1,18 +1,22 @@
 import { type modelListRows } from './model-list.js';
-import { applyVendor, effectiveFactor, restoreDraft, validFactor } from './sales-pricing.js';
+import { applyVendor, effectiveFactor, restoreDraft, validFactor, vendorChanges } from './sales-pricing.js';
 const html = (v: unknown) => String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
-export function salesEditor(rows: Awaited<ReturnType<typeof modelListRows>>, username: string): string {
-  const models=rows.map(r=>({id:String(r.cells[3]),vendor:String(r.cells[1]),name:String(r.cells[2]),category:String(r.cells[5]),base:typeof r.cells[4]==='number'?r.cells[4]:1}));
+export function salesEditor(rows: Awaited<ReturnType<typeof modelListRows>>, username: string, floors:Record<string,number>={}, templates:{id:number;name:string;version:number;items_json:string}[]=[], product=false): string {
+  const models=rows.map(r=>({id:String(r.cells[3]),vendor:String(r.cells[1]),name:String(r.cells[2]),category:String(r.cells[5]),floor:floors[String(r.cells[3])]??(typeof r.cells[4]==='number'?r.cells[4]:1),base:typeof r.cells[4]==='number'?r.cells[4]:1}));
   const options=(items:string[])=>[...new Set(items)].sort().map(s=>`<option value="${html(s)}">${html(s)}</option>`).join('');
   return `<div id="sales-workbench" data-owner="${html(username)}"><div class="sales-heading"><h1>銷售報價工作台</h1><span id="draft-status" role="status">草稿只儲存在此瀏覽器</span></div>
   <form id="form"><section class="quote-settings"><label>客戶名稱<input id="customer" maxlength="120" required placeholder="例如：星海科技"></label><label>有效天數<input id="days" type="number" min="1" max="365" value="30" required></label><label class="quote-note">報價說明<input id="note" maxlength="2000" placeholder="付款條件、服務範圍或聯絡方式"></label></section>
   <div class="draft-tools"><button id="save-draft" type="button">暫存草稿</button><select id="draft-list" aria-label="已暫存草稿"><option value="">已暫存草稿</option></select><button id="load-draft" type="button">載入草稿</button><button id="new-draft" type="button">新建草稿</button><button id="undo" type="button" disabled>復原上一步</button></div>
   <section class="pricing-panel"><div class="pricing-filters"><input id="search" type="search" placeholder="搜尋模型或供應商"><select id="vendor" aria-label="篩選供應商"><option value="">全部供應商</option>${options(models.map(m=>m.vendor))}</select><select id="category" aria-label="篩選類別"><option value="">全部類別</option>${options(models.map(m=>m.category))}</select><label class="inline"><input id="selected-only" type="checkbox">只看已選</label><label class="inline"><input id="custom-only" type="checkbox">只看自訂</label><span id="visible-count"></span></div>
+  <details><summary>多 vendor 配價與價格模板</summary><fieldset><legend>批量調整的 vendor</legend>${[...new Set(models.map(m=>m.vendor))].sort().map(v=>`<label style="display:inline-flex;margin:4px"><input type="checkbox" class="batch-vendor" value="${html(v)}">${html(v)}</label>`).join('')}</fieldset>
+  <div class="pricing-actions"><select id="adjust-mode" aria-label="調整方式"><option value="set">設為指定係數</option><option value="delta">依現價增減</option></select><label>數值<input type="number" id="adjust-value" step="0.01" value="0.80" form="batch-adjust"></label><button type="button" id="multi-apply">預覽批量調整</button></div>
+  <div class="pricing-actions"><select id="template" aria-label="價格模板"><option value="">選擇價格模板</option><option value="catalog">平台標準（全模型）</option><option value="vendor">Vendor 標準（勾選的 vendor）</option>${templates.map(t=>`<option value="${t.id}">${html(t.name)} · v${t.version}</option>`).join('')}</select><button id="use-template" type="button">預覽套用模板</button>${product?`<button id="save-template" type="button">將已選配價存為模板版本</button><button id="retire-template" type="button">停用所選模板</button><button id="set-floor" type="button">將已選配價設為銷售下限</button>`:''}</div></details>
+  <script type="application/json" id="template-data">${JSON.stringify(templates).replace(/</g,'\\u003c')}</script>
   <div class="pricing-actions"><label class="inline">折扣係數<input id="batch" type="number" min="0" max="1" step="any" value="0.88"></label><button id="vendor-apply" type="button">設定此 vendor</button><label class="inline"><input id="overwrite" type="checkbox">覆蓋模型自訂</label><label class="inline"><input id="auto-select" type="checkbox" checked>同時選取模型</label><span class="action-divider"></span><select id="scope" aria-label="批次套用範圍"><option value="filtered">目前篩選結果</option><option value="selected">所有已選模型</option><option value="selected-filtered">篩選中的已選模型</option></select><button id="apply" type="button">批次套用</button><button id="reset-prices" type="button">恢復繼承價格</button></div>
   <div class="pricing-help"><span>價格優先順序：模型自訂 ＞ vendor 折扣 ＞目錄預設。</span><span>折扣係數 0.88 = 標準價的 88%。</span><button id="select" type="button">選取篩選結果</button><button id="clear" type="button">取消選取篩選結果</button></div>
   <div id="vendor-rules" aria-label="已配置 vendor 折扣"></div>
   <div class="scroll models"><table><thead><tr><th>選用</th><th>供應商</th><th>模型 / API ID</th><th>類別</th><th>折扣係數</th><th>價格來源</th><th>操作</th></tr></thead><tbody id="models">${models.map(m=>`<tr data-id="${html(m.id)}"><td><input type="checkbox" class="pick" aria-label="選取 ${html(m.id)}"></td><td data-no-translate>${html(m.vendor)}</td><td data-no-translate><span class="model-title">${html(m.name)}</span><small>${html(m.id)}</small></td><td>${html(m.category)}</td><td><input class="factor" type="number" min="0" max="1" step="any" value="${m.base}" aria-label="${html(m.id)} 折扣"></td><td class="price-source"></td><td><button type="button" class="reset-model">重設</button></td></tr>`).join('')}</tbody></table></div>
-  <div class="quote-submit"><span id="count"></span><button class="primary" id="create" type="submit">生成客戶專屬連結</button><p id="status" role="status"></p></div><div id="result" hidden><label>客戶報價連結<input id="link" readonly></label><button id="copy" type="button">複製連結</button> <a id="open" target="_blank" rel="noopener">查看客戶頁面</a></div></section></form></div>
+  <div class="quote-submit"><span id="count"></span><button class="primary" id="create" type="submit">發出報價 / 送特批</button><p id="status" role="status"></p></div><div id="result" hidden><label>客戶報價連結<input id="link" readonly></label><button id="copy" type="button">複製連結</button> <a id="open" target="_blank" rel="noopener">查看客戶頁面</a></div></section></form></div>
   <script id="pricing-data" type="application/json">${JSON.stringify(models).replace(/</g,'\\u003c')}</script>`;
 }
 export const salesEditorStyles = `
@@ -27,6 +31,7 @@ ${validFactor.toString()}
 ${effectiveFactor.toString()}
 ${applyVendor.toString()}
 ${restoreDraft.toString()}
+${vendorChanges.toString()}
 const $=s=>document.querySelector(s),models=JSON.parse($('#pricing-data').textContent),rows=[...document.querySelectorAll('#models tr')],byId=new Map(models.map(m=>[m.id,m]));
 const owner=$('#sales-workbench').dataset.owner,key='siraya:sales:drafts:v2:'+owner;const empty=()=>({customer:'',days:30,note:'',vendors:{},models:{}});let state=empty(),history=[],saved=[],timer;
 function notify(text){$('#status').textContent=text}
@@ -39,7 +44,7 @@ function item(id){return state.models[id]??{selected:false,override:null}}
 function matches(m){const query=$('#search').value.trim().toLowerCase();return(!$('#vendor').value||m.vendor===$('#vendor').value)&&(!$('#category').value||m.category===$('#category').value)&&(!query||(m.name+' '+m.id+' '+m.vendor).toLowerCase().includes(query))&&(!$('#selected-only').checked||item(m.id).selected)&&(!$('#custom-only').checked||item(m.id).override!==null)}
 function scope(){return models.filter(m=>$('#scope').value==='selected'?item(m.id).selected:matches(m)&&($('#scope').value!=='selected-filtered'||item(m.id).selected))}
 function renderFields(){$('#customer').value=state.customer;$('#days').value=state.days;$('#note').value=state.note}
-function render(){let count=0,visible=0;for(const row of rows){const m=byId.get(row.dataset.id),v=item(m.id);row.hidden=!matches(m);if(!row.hidden)visible++;if(v.selected)count++;row.querySelector('.pick').checked=v.selected;row.querySelector('.factor').value=effectiveFactor(m,state);row.dataset.custom=String(v.override!==null);row.querySelector('.price-source').textContent=v.override!==null?'模型自訂':Object.hasOwn(state.vendors,m.vendor)?'Vendor 折扣':'目錄預設'}$('#count').textContent='已選 '+count+' 個模型';$('#visible-count').textContent='顯示 '+visible+' / '+models.length;$('#vendor-apply').disabled=!$('#vendor').value;$('#undo').disabled=!history.length;
+function render(){let count=0,visible=0;for(const row of rows){const m=byId.get(row.dataset.id),v=item(m.id);row.hidden=!matches(m);if(!row.hidden)visible++;if(v.selected)count++;row.querySelector('.pick').checked=v.selected;row.querySelector('.factor').value=effectiveFactor(m,state);row.dataset.custom=String(v.override!==null);row.querySelector('.price-source').textContent=(v.override!==null?'模型自訂':Object.hasOwn(state.vendors,m.vendor)?'Vendor 折扣':'目錄預設')+' · 下限 '+m.floor+((effectiveFactor(m,state)<m.floor||effectiveFactor(m,state)===0)?' · 待特批':'')}$('#count').textContent=(state.parentId?'修訂報價 · ':'')+'已選 '+count+' 個模型';$('#visible-count').textContent='顯示 '+visible+' / '+models.length;$('#vendor-apply').disabled=!$('#vendor').value;$('#undo').disabled=!history.length;
 const rules=$('#vendor-rules');rules.replaceChildren();for(const vendor of Object.keys(state.vendors)){const tag=document.createElement('span');tag.className='vendor-rule';const text=document.createElement('span');text.dataset.noTranslate='';text.textContent=vendor+' · '+state.vendors[vendor];tag.append(text);const button=document.createElement('button');button.type='button';button.textContent='×';button.setAttribute('aria-label','移除 '+vendor+' 折扣');button.onclick=()=>{checkpoint();delete state.vendors[vendor];render();persist()};tag.append(button);rules.append(tag)}}
 function list(){const select=$('#draft-list');select.replaceChildren(new Option('已暫存草稿',''));for(const d of saved){const option=new Option(d.name,d.id);option.dataset.noTranslate='';select.add(option)}}
 try{const data=JSON.parse(localStorage.getItem(key)||'null');if(data?.version===2){state=restoreDraft(data.working,models);saved=Array.isArray(data.saved)?data.saved.slice(0,30).flatMap(d=>{try{return[{id:String(d.id),name:String(d.name).slice(0,160),draft:restoreDraft(d.draft,models)}]}catch{return[]}}):[];$('#draft-status').textContent='已恢復上次草稿'}}catch{$('#draft-status').textContent='未能讀取草稿，請檢查瀏覽器儲存空間'}renderFields();render();list();
@@ -58,7 +63,55 @@ $('#save-draft').onclick=()=>{fields();try{restoreDraft(state,models)}catch{retu
 $('#load-draft').onclick=()=>{const d=saved.find(d=>d.id===$('#draft-list').value);if(!d)return;checkpoint();state=restoreDraft(d.draft,models);renderFields();render();persist();notify('已載入草稿')};
 $('#new-draft').onclick=()=>{checkpoint();state=empty();renderFields();render();persist();notify('已新建草稿，可用復原回到上一份')};
 window.addEventListener('pagehide',()=>{fields();persist()});
-$('#form').onsubmit=async e=>{e.preventDefault();fields();const selected=models.filter(m=>item(m.id).selected);if(!selected.length)return notify('請至少選取一個模型');$('#create').disabled=true;$('#result').hidden=true;notify('正在儲存報價…');try{const response=await fetch('/sales/quotes',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({customer:state.customer,days:state.days,note:state.note,items:selected.map(m=>({id:m.id,factor:effectiveFactor(m,state)}))})});const data=await response.json();if(!response.ok)throw Error(data.error);$('#link').value=data.url;$('#open').href=data.url;$('#result').hidden=false;persist();notify('報價已儲存，可直接分享連結。重新整理可查看最新報價紀錄。')}catch(e){notify(e.message||'儲存失敗，請重試')}finally{$('#create').disabled=false}};
+const templates=JSON.parse($('#template-data').textContent);
+const picked=()=>models.filter(m=>item(m.id).selected).map(m=>({id:m.id,factor:effectiveFactor(m,state)}));
+const vendors=()=>new Set([...document.querySelectorAll('.batch-vendor:checked')].map(e=>e.value));
+function preview(changes,title){
+  if(!changes.length){notify('沒有符合的模型，請檢查選取範圍及覆蓋選項');return false}
+  const invalid=changes.find(c=>!validFactor(c.factor));
+  if(invalid){notify(invalid.id+' 調整後超過 0–1 範圍');return false}
+  return confirm(title+' · '+changes.length+' 個模型\\n'+changes.map(c=>{
+    const m=byId.get(c.id);
+    return m.id+'  '+effectiveFactor(m,state)+' → '+c.factor+(c.factor<m.floor||!c.factor?'（需特批）':'');
+  }).join('\\n'));
+}
+function applyChanges(changes){
+  for(const c of changes)state.models[c.id]={selected:$('#auto-select').checked||item(c.id).selected,override:c.factor};
+  render();persist();
+}
+$('#adjust-mode').onchange=()=>{$('#adjust-value').value=$('#adjust-mode').value==='delta'?'0.01':'0.80'};
+$('#multi-apply').onclick=()=>{
+  const group=vendors(),n=$('#adjust-value').valueAsNumber,delta=$('#adjust-mode').value==='delta';
+  const changes=vendorChanges(state,models,group,n,delta,$('#overwrite').checked);
+  if(!preview(changes,'批量調整'))return;
+  checkpoint();
+  if(delta)applyChanges(changes);
+  else {for(const v of new Set(changes.map(c=>byId.get(c.id).vendor)))state=applyVendor(state,models,v,n,$('#overwrite').checked,$('#auto-select').checked);render();persist()}
+};
+$('#use-template').onclick=()=>{
+  const value=$('#template').value,group=vendors(),t=templates.find(t=>String(t.id)===value);
+  const entries=t?JSON.parse(t.items_json):models.filter(m=>value==='catalog'||(value==='vendor'&&group.has(m.vendor))).map(m=>({id:m.id,factor:m.base}));
+  const changes=entries.filter(c=>byId.has(c.id)&&($('#overwrite').checked||(item(c.id).override===null&&!Object.hasOwn(state.vendors,byId.get(c.id).vendor))));
+  if(!preview(changes,'套用模板'))return;
+  checkpoint();state.templateId=t?.id??null;applyChanges(changes);
+};
+async function post(path,body){
+  const response=await fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+  const data=await response.json();if(!response.ok)throw Error(data.error);return data;
+}
+function action(button,fn){if(button)button.onclick=async()=>{button.disabled=true;try{await fn()}catch(e){notify(e.message)}finally{button.disabled=false}}}
+action($('#save-template'),async()=>{const name=prompt('模板名稱（同名會建立下一版本）');if(!name)return;await post('/sales/templates',{name,items:picked()});location.reload()});
+action($('#set-floor'),async()=>{const items=picked();if(!preview(items,'更新銷售授權下限'))return;await post('/sales/floors',{items});location.reload()});
+action($('#retire-template'),async()=>{const id=Number($('#template').value);if(!id)return notify('請選擇產品模板');if(confirm('停用所選模板？')){await post('/sales/retire',{id});location.reload()}});
+document.querySelectorAll('[data-approve]').forEach(b=>action(b,async()=>{await post('/sales/quotes/'+b.dataset.approve+'/approve',{});location.reload()}));
+document.querySelectorAll('[data-revise]').forEach(b=>action(b,async()=>{
+  const r=await fetch('/sales/quotes/'+b.dataset.revise+'/revise'),q=await r.json();if(!r.ok)throw Error(q.error);
+  if(q.items.some(c=>!byId.has(c.id)))throw Error('報價包含已下架模型，請建立新報價');
+  checkpoint();state={...empty(),customer:q.customer,days:q.days,note:q.note,parentId:b.dataset.revise,templateId:q.templateId};
+  for(const c of q.items)state.models[c.id]={selected:true,override:c.factor};
+  renderFields();render();persist();window.scrollTo(0,0);notify('已載入修訂草稿');
+}));
+$('#form').onsubmit=async e=>{e.preventDefault();fields();const selected=models.filter(m=>item(m.id).selected);if(!selected.length)return notify('請至少選取一個模型');$('#create').disabled=true;$('#result').hidden=true;notify('正在儲存報價…');try{const response=await fetch('/sales/quotes',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({parentId:state.parentId,templateId:state.templateId,customer:state.customer,days:state.days,note:state.note,items:selected.map(m=>({id:m.id,factor:effectiveFactor(m,state)}))})});const data=await response.json();if(!response.ok)throw Error(data.error);if(data.status==='pending'){notify('已送產品特批。核准後可在最近報價查看連結。');persist();return}$('#link').value=data.url;$('#open').href=data.url;$('#result').hidden=false;persist();notify('報價已儲存，可直接分享連結。重新整理可查看最新報價紀錄。')}catch(e){notify(e.message||'儲存失敗，請重試')}finally{$('#create').disabled=false}};
 $('#copy').onclick=async()=>{try{await navigator.clipboard.writeText($('#link').value);notify('連結已複製')}catch{$('#link').select();notify('請複製已選取的連結')}};
 document.querySelectorAll('[data-revoke]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{const r=await fetch('/sales/quotes/'+b.dataset.revoke,{method:'DELETE'});if(!r.ok)throw Error('停用失敗');location.reload()}catch(e){notify(e.message);b.disabled=false}});
 })();`;

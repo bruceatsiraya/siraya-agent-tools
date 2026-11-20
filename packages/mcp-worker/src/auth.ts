@@ -8,6 +8,7 @@ export interface AdminIdentity {
   id: number;
   username: string;
   method: "session" | "token";
+  pricing_role: "sales" | "product";
 }
 
 interface UserRow {
@@ -27,15 +28,15 @@ const SESSION_SECONDS = 8 * 60 * 60;
 export async function authenticateAdmin(request: Request, env: AuthEnv): Promise<AdminIdentity | null> {
   const bearer = bearerToken(request);
   if (bearer && env.ADMIN_TOKEN && timingSafeEqual(bearer, env.ADMIN_TOKEN)) {
-    return { id: 0, username: "token-admin", method: "token" };
+    return { id: 0, username: "token-admin", method: "token", pricing_role: "product" };
   }
   const token = cookieValue(request, COOKIE_NAME);
   if (!token) return null;
   const tokenHash = await sha256(token);
-  const row = await env.SIRAYA_METADATA.prepare(`SELECT u.id, u.username
+  const row = await env.SIRAYA_METADATA.prepare(`SELECT u.id, u.username, u.pricing_role
     FROM admin_sessions s JOIN admin_users u ON u.id = s.user_id
     WHERE s.token_hash = ? AND s.expires_at > ? AND u.active = 1`)
-    .bind(tokenHash, new Date().toISOString()).first<{ id: number; username: string }>();
+    .bind(tokenHash, new Date().toISOString()).first<Pick<AdminIdentity, "id" | "username" | "pricing_role">>();
   if (!row) return null;
   await env.SIRAYA_METADATA.prepare("UPDATE admin_sessions SET last_seen_at = ? WHERE token_hash = ?")
     .bind(new Date().toISOString(), tokenHash).run();

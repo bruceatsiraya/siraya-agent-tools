@@ -1,0 +1,10 @@
+ALTER TABLE admin_users ADD COLUMN pricing_role TEXT NOT NULL DEFAULT 'sales' CHECK(pricing_role IN ('sales','product'));
+CREATE TABLE sales_floors(model_id TEXT PRIMARY KEY, factor REAL NOT NULL CHECK(factor BETWEEN 0 AND 1));
+CREATE TABLE sales_templates(id INTEGER PRIMARY KEY, name TEXT NOT NULL, version INTEGER NOT NULL, items_json TEXT NOT NULL, author TEXT NOT NULL, retired INTEGER NOT NULL DEFAULT 0, UNIQUE(name,version));
+ALTER TABLE sales_quotes ADD COLUMN version INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE sales_quotes ADD COLUMN parent_id TEXT REFERENCES sales_quotes(id);
+CREATE UNIQUE INDEX sales_quote_revision ON sales_quotes(parent_id) WHERE parent_id IS NOT NULL;
+ALTER TABLE sales_quotes ADD COLUMN status TEXT NOT NULL DEFAULT 'issued';
+ALTER TABLE sales_quotes ADD COLUMN approved_by TEXT;
+ALTER TABLE sales_quotes ADD COLUMN approved_at TEXT;
+ALTER TABLE sales_quotes ADD COLUMN template_id INTEGER REFERENCES sales_templates(id);
