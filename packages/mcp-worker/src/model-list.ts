@@ -48,6 +48,8 @@ const families: Record<string, string> = {
 
 export function modelCategory(model: SirayaModelCapability): string {
   const id = model.id.toLowerCase();
+  if (/^gemini-omni-/.test(id)) return "Video";
+  if (id.includes("nano-banana")) return "Image";
   if (/kling|happyhorse|seedance|(?:^|-)veo|wan.*(?:i2v|t2v)|minimax.*h3/.test(id)) return "Video";
   if (/seedream|gpt-image|gemini.*image/.test(id)) return "Image";
   return model.category === "text" ? "LLM" : model.category[0].toUpperCase() + model.category.slice(1);

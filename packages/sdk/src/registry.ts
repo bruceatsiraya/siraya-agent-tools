@@ -178,6 +178,8 @@ export function validateRequest(model: SirayaModelCapability, request: Record<st
 }
 
 function inferFamily(id: string): SirayaModelCapability["family"] {
+  if (/^gemini-omni-/.test(id)) return "video";
+  if (id.includes("nano-banana")) return "image";
   if (id.includes("seedance") || id.includes("veo") || id.includes("video")) return "video";
   if (id.includes("seedream") || id.includes("imagen") || id.includes("gpt-image") || id.includes("-image")) return "image";
   if (id.includes("asr") || id.includes("transcri") || id.includes("speech") || id.includes("tts") || id.includes("audio")) return "audio";
