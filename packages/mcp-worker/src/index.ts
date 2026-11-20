@@ -50,7 +50,7 @@ interface JsonRpcRequest {
   params?: Record<string, unknown>;
 }
 
-const REGISTRY_KEY = "registry:latest:v6";
+const REGISTRY_KEY = "registry:latest:v7";
 const DEFAULT_BASE_URL = "https://llm.siraya.ai/v1";
 
 export default {
