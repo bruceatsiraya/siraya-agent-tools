@@ -28,7 +28,7 @@ export function modelListPage(rows: Row[], generatedAt: string, live: boolean, a
         : typeof value === "number" && name === "tps" ? value.toFixed(1)
         : typeof value === "number" && index >= 8 && index <= 12 ? value.toLocaleString("en-US") : value;
       if (name === "tps" && benchmark) return `<td><details><summary>${html(formatted ?? "—")}</summary><small>${html(benchmark)}</small></details></td>`;
-      return `<td>${html(formatted ?? "—")}</td>`;
+      return `<td${index === 2 || index === 3 ? " data-no-translate" : ""}>${html(formatted ?? "—")}</td>`;
     }).join("");
     return `<tr data-id="${html(cells[3])}" data-category="${html(category)}" data-family="${html(cells[1])}">${values}<td><button type="button" data-save>Save</button></td></tr>`;
   }).join("");

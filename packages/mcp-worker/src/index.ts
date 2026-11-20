@@ -17,6 +17,7 @@ import { exportModelList } from "./model-list-xlsx.js";
 import { updateListBenchmarks } from "./model-list-benchmarks.js";
 import { renderDocs } from "./docs.js";
 import { salesRoute } from "./sales.js";
+import { siteLanguageScript } from "./site-language.js";
 import { renderModelCatalog } from "./catalog.js";
 import { authenticateAdmin, login, logout, renderAdminPortal } from "./auth.js";
 import { enrichPublicInfo } from "./public-info.js";
@@ -55,6 +56,9 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }));
+    if (url.pathname === "/site-language.js" && request.method === "GET") {
+      return new Response(siteLanguageScript, { headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "no-cache" } });
+    }
     if (url.pathname === "/sales" || url.pathname.startsWith("/sales/") || url.pathname.startsWith("/quote/")) {
       try {
         return await salesRoute(request, env, async () => {
