@@ -66,13 +66,18 @@ async function main() {
       const input=row(p,id).locator('.factor');
       await input.fill(value);await input.press('Tab');
     }
-    await product.locator('#select').click();
+    for(const id of ids) await row(product,id).locator('.pick').check();
     await price(product,ids[0],'0.72');
     await price(product,ids[1],'0.68');
     const controls=p=>p.getByText('多 vendor 配價與價格模板',{exact:true});
     await controls(product).click();
     await Promise.all([product.waitForEvent('load'),product.locator('#save-template').click()]);
     const sales=await page('sales'), customer=await page();
+    await sales.locator('[data-site-lang=en]').click();
+    await sales.reload();
+    await sales.getByRole('heading',{name:'Price calculator'}).waitFor();
+    await sales.getByText('Multi-vendor pricing and templates',{exact:true}).waitFor();
+    await sales.locator('[data-site-lang=zh]').click();
     assert.equal(await sales.locator('#save-template').count(),0);
     await controls(sales).click();
     const vendors=sales.locator('.batch-vendor');
@@ -82,11 +87,17 @@ async function main() {
     await sales.locator('#adjust-value').fill('-0.10');
     await sales.locator('#multi-apply').click();
     for(const id of ids) assert.equal(await row(sales,id).locator('.factor').inputValue(),'0.9');
+    await sales.getByText('單一供應商及篩選配價',{exact:true}).click();
     await sales.locator('#overwrite').check();
     await sales.locator('#template').selectOption({label:'E2E partner · v1'});
     await sales.locator('#use-template').click();
     assert.equal(await row(sales,ids[0]).locator('.factor').inputValue(),'0.72');
     assert.equal(await row(sales,ids[1]).locator('.factor').inputValue(),'0.68');
+    await sales.locator('#estimate-tiers').fill('1000:1, *:0.9');
+    await sales.locator('#estimate-slider').focus();
+    await sales.locator('#estimate-slider').press('End');
+    assert.equal(await sales.locator('#estimate-amount').inputValue(),'20000');
+    assert.equal(await sales.locator('#estimate-factor').textContent(),'63.5%');
     await sales.locator('#customer').fill('E2E Customer');
     const submission=sales.waitForResponse(r=>r.url()===origin+'/sales/quotes'&&r.request().method()==='POST');
     await sales.locator('#create').click();

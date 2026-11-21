@@ -26,7 +26,9 @@ test('saved draft restores vendor rules, custom factors and selections without s
   first.models.a.override=8;assert.throws(()=>restoreDraft(first,models));
 });
 test('browser scripts parse and embedded model data cannot break out of JSON',()=>{
-  const editor={};new Function('require','exports',ts.transpileModule(fs.readFileSync(__dirname+'/src/sales-editor.ts','utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText)(()=>mod,editor);
+  const estimate={};new Function('exports',ts.transpileModule(fs.readFileSync(__dirname+'/src/sales-estimate.ts','utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText)(estimate);
+  assert.equal(estimate.estimatePayment(1150,[{end:1000,factor:1},{end:Infinity,factor:0.9}]),1135);
+  const editor={};new Function('require','exports',ts.transpileModule(fs.readFileSync(__dirname+'/src/sales-editor.ts','utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText)(name=>name.includes('estimate')?estimate:mod,editor);
   new Function(editor.salesEditorScript);
   const id='test</script><script>alert(1)</script>';
   const html=editor.salesEditor([{cells:[1,'Vendor','Example',id,0.9,'LLM']}],'tester');
