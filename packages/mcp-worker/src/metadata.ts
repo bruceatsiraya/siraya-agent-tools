@@ -138,6 +138,21 @@ export async function deleteModelOverride(db: D1Database, registry: SirayaRegist
   ]);
 }
 
+export async function getResearchModel(env: MetadataEnv): Promise<string> {
+  const row = await env.SIRAYA_METADATA.prepare("SELECT analysis_model FROM model_research_settings WHERE id = 1")
+    .first<{ analysis_model: string }>();
+  return row?.analysis_model ?? env.SIRAYA_ENRICHMENT_MODEL ?? "deepseek-v4-pro";
+}
+
+export async function saveResearchModel(db: D1Database, model: string | null): Promise<void> {
+  if (model === null) {
+    await db.prepare("DELETE FROM model_research_settings WHERE id = 1").run();
+    return;
+  }
+  await db.prepare(`INSERT INTO model_research_settings (id, analysis_model) VALUES (1, ?)
+    ON CONFLICT(id) DO UPDATE SET analysis_model = excluded.analysis_model`).bind(model).run();
+}
+
 export async function researchModel(
   env: MetadataEnv,
   registry: SirayaRegistry,
@@ -151,9 +166,9 @@ export async function researchModel(
   const query = queries.join(" | ");
   const now = new Date().toISOString();
   try {
+    const analysisModel = await getResearchModel(env);
     const search = await searchPublicWeb(queries);
     const sources = search.sources;
-    const analysisModel = env.SIRAYA_ENRICHMENT_MODEL ?? "deepseek-v4-pro";
     const completionResponse = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
       headers: authHeaders(apiKey),

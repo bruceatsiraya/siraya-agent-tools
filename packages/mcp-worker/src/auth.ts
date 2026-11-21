@@ -113,7 +113,7 @@ export async function logout(request: Request, env: AuthEnv): Promise<Response> 
   return response;
 }
 
-export function renderAdminPortal(identity: AdminIdentity | null): Response {
+export function renderAdminPortal(identity: AdminIdentity | null, analysisModel?: string): Response {
   const body = identity ? `
     <main class="portal" id="site-main">
       <p class="eyebrow">SIRAYA internal</p>
@@ -127,6 +127,47 @@ export function renderAdminPortal(identity: AdminIdentity | null): Response {
         <a href="/docs/metadata">Administration guide</a>
         <button id="logout" type="button">Sign out</button>
       </div>
+      ${identity.pricing_role === "product" && analysisModel !== undefined ? `
+        <form id="research-settings" aria-labelledby="research-settings-title" method="post">
+          <h2 id="research-settings-title" style="margin:0;font-size:19px">Research model settings</h2>
+          <label>Analysis model ID
+            <input name="model" value="${escapeHtml(analysisModel)}" maxlength="256" required>
+          </label>
+          <a href="/models">Browse SIRAYA models</a>
+          <button type="submit" value="save">Save research model</button>
+          <button type="submit" value="reset" formnovalidate>Restore deployment default</button>
+          <p id="research-feedback" role="status" style="margin:0"></p>
+        </form>
+        <script>
+          document.getElementById("research-settings").addEventListener("submit", async event => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const feedback = document.getElementById("research-feedback");
+            const model = event.submitter?.value === "reset" ? null : new FormData(form).get("model");
+            const buttons = form.querySelectorAll("button");
+            buttons.forEach(button => button.disabled = true);
+            feedback.textContent = "Saving…";
+            try {
+              const response = await fetch("/admin/settings/research-model", {
+                method: "PATCH",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ model })
+              });
+              const result = await response.json();
+              if (!response.ok) {
+                feedback.textContent = result.message || "Could not save. Sign in again if your session has expired.";
+                return;
+              }
+              form.elements.namedItem("model").value = result.model;
+              feedback.textContent = model === null ? "Deployment default restored." : "Research model saved.";
+            } catch {
+              feedback.textContent = "Could not save. Please try again.";
+            } finally {
+              buttons.forEach(button => button.disabled = false);
+            }
+          });
+        </script>
+      ` : ""}
     </main>
     <script>document.getElementById("logout").addEventListener("click", async () => {
       await fetch("/admin/auth/logout", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });

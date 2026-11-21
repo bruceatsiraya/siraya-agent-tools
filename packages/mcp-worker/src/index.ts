@@ -26,10 +26,12 @@ import {
   adminModel,
   applyStoredOverrides,
   deleteModelOverride,
+  getResearchModel,
   lowConfidenceModels,
   researchModel,
   reviewResearch,
   saveModelOverride,
+  saveResearchModel,
   type MetadataEnv
 } from "./metadata.js";
 
@@ -78,7 +80,9 @@ export default {
       return identity ? json({ authenticated: true, user: identity }) : json({ authenticated: false }, 401);
     }
     if ((url.pathname === "/admin" || url.pathname === "/admin/") && request.method === "GET") {
-      return renderAdminPortal(await authenticateAdmin(request, env));
+      const identity = await authenticateAdmin(request, env);
+      const analysisModel = identity?.pricing_role === "product" ? await getResearchModel(env) : undefined;
+      return renderAdminPortal(identity, analysisModel);
     }
     if (url.pathname === "/model-list.js" && request.method === "GET") {
       return new Response(modelListScript + modelListImportScript, {
@@ -323,6 +327,22 @@ async function handleAdmin(request: Request, env: Env, url: URL): Promise<Respon
   if (identity.method === "session" && !isSameOrigin(request, url)) return json({ error: "invalid_origin" }, 403);
   try {
     const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+    if (url.pathname === "/admin/settings/research-model" && request.method === "PATCH") {
+      if (identity.pricing_role !== "product") return json({ error: "product_required" }, 403);
+      const { model } = asRecord(await request.json());
+      if (model !== null) {
+        if (typeof model !== "string" || !model.trim() || model.length > 256) {
+          return json({ error: "invalid_model", message: "Enter a valid SIRAYA model ID." }, 400);
+        }
+        const registry = await getRegistry(env);
+        if (!registry.models.some(candidate => candidate.id === model.trim() &&
+            candidate.category === "text" && candidate.apiFormats.includes("openai_chat"))) {
+          return json({ error: "unsupported_model", message: "Choose a text model that supports OpenAI Chat from the SIRAYA model catalog." }, 400);
+        }
+      }
+      await saveResearchModel(env.SIRAYA_METADATA, model === null ? null : model.trim());
+      return json({ model: await getResearchModel(env) });
+    }
     if (identity.pricing_role === "sales" && request.method !== "GET" && ["model-list","models","research"].includes(parts[1])) return json({error:"product_required"},403);
     if (parts[1] === "model-list" && parts.length === 3) {
       if (parts[2] === "save" && request.method === "POST") {
