@@ -9,6 +9,7 @@ export interface AdminIdentity {
   username: string;
   method: "session" | "token";
   pricing_role: "sales" | "product";
+  can_manage_research_settings?: number;
 }
 
 interface UserRow {
@@ -33,14 +34,18 @@ export async function authenticateAdmin(request: Request, env: AuthEnv): Promise
   const token = cookieValue(request, COOKIE_NAME);
   if (!token) return null;
   const tokenHash = await sha256(token);
-  const row = await env.SIRAYA_METADATA.prepare(`SELECT u.id, u.username, u.pricing_role
+  const row = await env.SIRAYA_METADATA.prepare(`SELECT u.id, u.username, u.pricing_role, u.can_manage_research_settings
     FROM admin_sessions s JOIN admin_users u ON u.id = s.user_id
     WHERE s.token_hash = ? AND s.expires_at > ? AND u.active = 1`)
-    .bind(tokenHash, new Date().toISOString()).first<Pick<AdminIdentity, "id" | "username" | "pricing_role">>();
+    .bind(tokenHash, new Date().toISOString()).first<Omit<AdminIdentity, "method">>();
   if (!row) return null;
   await env.SIRAYA_METADATA.prepare("UPDATE admin_sessions SET last_seen_at = ? WHERE token_hash = ?")
     .bind(new Date().toISOString(), tokenHash).run();
   return { ...row, method: "session" };
+}
+
+export function canManageResearchSettings(identity: AdminIdentity | null): boolean {
+  return identity?.pricing_role === "product" || identity?.can_manage_research_settings === 1;
 }
 
 export async function login(request: Request, env: AuthEnv): Promise<Response> {
@@ -127,7 +132,7 @@ export function renderAdminPortal(identity: AdminIdentity | null, analysisModel?
         <a href="/docs/metadata">Administration guide</a>
         <button id="logout" type="button">Sign out</button>
       </div>
-      ${identity.pricing_role === "product" && analysisModel !== undefined ? `
+      ${canManageResearchSettings(identity) && analysisModel !== undefined ? `
         <form id="research-settings" aria-labelledby="research-settings-title" method="post">
           <h2 id="research-settings-title" style="margin:0;font-size:19px">Research model settings</h2>
           <label>Analysis model ID

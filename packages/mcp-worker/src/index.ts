@@ -20,7 +20,7 @@ import { salesRoute } from "./sales.js";
 import { correctModelIdentities } from "./model-corrections.js";
 import { siteLanguageScript } from "./site-language.js";
 import { renderModelCatalog } from "./catalog.js";
-import { authenticateAdmin, login, logout, renderAdminPortal } from "./auth.js";
+import { authenticateAdmin, canManageResearchSettings, login, logout, renderAdminPortal } from "./auth.js";
 import { enrichPublicInfo } from "./public-info.js";
 import {
   adminModel,
@@ -81,7 +81,7 @@ export default {
     }
     if ((url.pathname === "/admin" || url.pathname === "/admin/") && request.method === "GET") {
       const identity = await authenticateAdmin(request, env);
-      const analysisModel = identity?.pricing_role === "product" ? await getResearchModel(env) : undefined;
+      const analysisModel = canManageResearchSettings(identity) ? await getResearchModel(env) : undefined;
       return renderAdminPortal(identity, analysisModel);
     }
     if (url.pathname === "/model-list.js" && request.method === "GET") {
@@ -328,7 +328,7 @@ async function handleAdmin(request: Request, env: Env, url: URL): Promise<Respon
   try {
     const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
     if (url.pathname === "/admin/settings/research-model" && request.method === "PATCH") {
-      if (identity.pricing_role !== "product") return json({ error: "product_required" }, 403);
+      if (!canManageResearchSettings(identity)) return json({ error: "research_settings_access_required" }, 403);
       const { model } = asRecord(await request.json());
       if (model !== null) {
         if (typeof model !== "string" || !model.trim() || model.length > 256) {

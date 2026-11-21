@@ -37,7 +37,8 @@ The **Research model** action:
 5. Validates every candidate against the Registry schema.
 6. Stores the result as pending until an administrator approves or rejects it.
 
-Product admins can set the analysis model in `/admin` under **Research model settings**.
+Product admins and accounts with the dedicated research settings permission can
+set the analysis model in `/admin` under **Research model settings**.
 Enter a SIRAYA text model ID that supports OpenAI Chat. The saved setting applies
 to subsequent manual and scheduled research runs. **Restore deployment default**
 clears the saved setting and uses `SIRAYA_ENRICHMENT_MODEL` again.
