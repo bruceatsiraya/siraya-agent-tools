@@ -1,3 +1,4 @@
+import { priceSummary } from './siraya-prices.js';
 import { salesEditor, salesEditorScript, salesEditorStyles } from './sales-editor.js';
 import { siteSidebar, siteStyles } from "./site-shell.js";
 import { authenticateAdmin, type AuthEnv } from './auth.js';
@@ -9,7 +10,7 @@ const json = (v: unknown, status = 200) => new Response(JSON.stringify(v), {stat
 export function validateQuote(input: unknown, rows: Rows) {
   const b = input as {customer?: unknown; days?: unknown; note?: unknown; items?: unknown};
   if (!b || typeof b.customer !== 'string' || !b.customer.trim() || b.customer.length > 120 || typeof b.days !== 'number' || !Number.isInteger(b.days) || b.days < 1 || b.days > 365 || typeof b.note !== 'string' || b.note.length > 2000 || !Array.isArray(b.items) || !b.items.length || b.items.length > 500) throw new Error('請填寫客戶名、1–365 天有效期及報價模型。');
-  const byId = new Map(rows.map(r => [String(r.cells[3]), r.cells])); const seen = new Set<string>();
+  const byId = new Map(rows.map(r => [String(r.cells[3]), r.officialPrice ? [...r.cells,priceSummary(r.officialPrice)] : r.cells])); const seen = new Set<string>();
   const cells = b.items.map((item: {id?: unknown; factor?: unknown}) => {
     if (!item || typeof item.id !== 'string' || seen.has(item.id) || !byId.has(item.id) || typeof item.factor !== 'number' || !Number.isFinite(item.factor) || item.factor < 0 || item.factor > 1) throw new Error('模型或折扣無效；折扣係數須介於 0 和 1。');
     seen.add(item.id); const c = [...byId.get(item.id)!]; c[0] = seen.size; c[4] = item.factor; return c;
@@ -97,7 +98,12 @@ export async function salesRoute(request: Request, env: AuthEnv, loadRows: () =>
   if (match && request.method === 'DELETE') { await env.SIRAYA_METADATA.prepare('UPDATE sales_quotes SET revoked=1 WHERE id=? AND (? OR created_by=?)').bind(match[1],Number(product),identity.username).run(); return json({ok:true}); }
   return json({error:'not_found'},404);
 }
-function table(names: string[], cells: Cell[][]) {return `<div class="scroll"><table><thead><tr>${names.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${cells.map(row=>`<tr>${row.map(c=>`<td data-no-translate>${esc(c ?? '—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;}
+function table(names: string[], cells: Cell[][]) {
+  if(cells.some(row=>row.length===names.length+1) && names.length>5){
+    names=[...names,"Siraya list price"];
+    cells=cells.map(row=>row.length<names.length?[...row,null]:row);
+  }
+  return `<div class="scroll"><table><thead><tr>${names.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${cells.map(row=>`<tr>${row.map(c=>`<td data-no-translate style="white-space:pre-line">${esc(c ?? '—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;}
 function page(title: string, body: string, status=200) {
   const internal = title === "銷售報價工作台";
   return new Response(`<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${esc(title)} | SIRAYA</title><style>*{box-sizing:border-box}body{margin:0;background:#f2f5fa;color:#182b45;font:16px/1.6 system-ui,sans-serif}main{max-width:1440px;margin:auto;padding:32px clamp(18px,4vw,64px)}header{background:#102943;color:white;padding:18px 4vw;font-weight:750;letter-spacing:.12em}h1{font-size:clamp(28px,4vw,44px);line-height:1.25;letter-spacing:-.03em}h2{font-size:22px;margin:0 0 8px}p{color:#52647b}section{background:white;border:1px solid #dce3ed;border-radius:14px;padding:24px;margin:24px 0}nav,.tools{display:flex;gap:16px;align-items:center;flex-wrap:wrap}nav{margin-bottom:28px}.tag{color:#146960;font-weight:700;letter-spacing:.1em}.grid{display:grid;grid-template-columns:2fr 1fr;gap:20px}.wide{grid-column:1/-1}label{display:block;font-weight:600}input,textarea,button{font:inherit;padding:10px 12px;border:1px solid #b7c5d6;border-radius:7px;color:inherit}label input,textarea{display:block;width:100%;margin-top:6px}textarea{height:90px}input[type=checkbox]{width:20px;height:20px;accent-color:#15736a}button{cursor:pointer;background:white}.primary{background:#116d63;color:white;border-color:#116d63}button:disabled{opacity:.6}a{color:#146b98}small{display:block;color:#607189}.scroll{overflow:auto;margin:20px 0}.models{max-height:480px}table{border-collapse:collapse;width:100%;white-space:nowrap}td,th{text-align:left;border-bottom:1px solid #e0e6ee;padding:12px}th{position:sticky;top:0;background:#edf2f7}td input.factor{width:115px}#link{width:100%}[hidden]{display:none!important}@media(max-width:650px){.grid{grid-template-columns:1fr}section{padding:16px}}@media print{button,nav{display:none}section{border:0;padding:0}.scroll{overflow:visible}table{white-space:normal;font-size:10px}main{padding:0}}${siteStyles}${internal ? salesEditorStyles : ''}</style></head><body class="${internal ? 'site-app' : 'customer-quote'}">${internal ? siteSidebar("/sales") : '<header>SIRAYA Model Router</header>'}<main id="site-main">${body}</main>${internal ? '' : '<script src="/site-language.js" defer></script>'}</body></html>`,{status,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','referrer-policy':'no-referrer','x-content-type-options':'nosniff','content-security-policy':"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"}});

@@ -1,5 +1,7 @@
 import { identifyModel, inferCapabilities, type SirayaModelCapability, type SirayaRegistry } from "@siraya/agent";
 
+import type { CatalogPrice } from "./siraya-prices.js";
+
 export const headers = [
   "No.", "Family", "Model", "Model ID (API Parameter)", "Discount Factor", "Category", "Input Modalities",
   "Output Modality", "Context Window", "Max Input", "Max Output", "RPM", "TPM",
@@ -58,7 +60,7 @@ export function correctQuoteIdentity(cells: Cell[]): Cell[] {
   const corrected=[...cells];corrected[1]=model.providerName;corrected[5]=modelCategory(model);return corrected;
 }
 
-export async function modelListRows(db: D1Database, registry: SirayaRegistry) {
+export async function modelListRows(db: D1Database, registry: SirayaRegistry, prices: Record<string,CatalogPrice> = {}) {
   const [specs, measurements, overrides] = await Promise.all([
     db.prepare("SELECT model_id,rpm,tpm,discount,baseline FROM model_list_specs").all<Spec>(),
     db.prepare("SELECT * FROM model_list_benchmarks").all<Benchmark>(),
@@ -92,7 +94,7 @@ export async function modelListRows(db: D1Database, registry: SirayaRegistry) {
       limit("rpm"), limit("tpm"), manual.ttft ?? automatic.ttft,
       manual.tps ?? automatic.tps
     ];
-    return { cells, category, infron, openRouter, manual, automatic };
+    return { cells, category, infron, openRouter, manual, automatic, officialPrice: prices[model.id.toLowerCase()] };
   }).sort((a, b) => String(a.cells[1]).localeCompare(String(b.cells[1])) ||
     a.category.localeCompare(b.category) ||
     String(a.cells[3]).localeCompare(String(b.cells[3]), "en", { numeric: true }))

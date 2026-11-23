@@ -16,6 +16,7 @@ import { modelListImportScript } from "./model-list-import.js";
 import { exportModelList } from "./model-list-xlsx.js";
 import { updateListBenchmarks } from "./model-list-benchmarks.js";
 import { renderDocs } from "./docs.js";
+import { officialPrices, syncOfficialPrices } from "./siraya-prices.js";
 import { salesRoute } from "./sales.js";
 import { correctModelIdentities } from "./model-corrections.js";
 import { siteLanguageScript } from "./site-language.js";
@@ -66,7 +67,7 @@ export default {
       try {
         return await salesRoute(request, env, async () => {
           const { registry } = await getListRegistry(env);
-          return modelListRows(env.SIRAYA_METADATA, registry);
+          return modelListRows(env.SIRAYA_METADATA, registry, await officialPrices(env.SIRAYA_REGISTRY));
         });
       } catch (error) {
         console.error("Sales quote unavailable", error);
@@ -126,6 +127,7 @@ export default {
       ctx.waitUntil(getListRegistry(env).then(({ registry }) => updateListBenchmarks(env.SIRAYA_METADATA, registry)));
     } else {
       ctx.waitUntil(refreshAndResearch(env));
+      ctx.waitUntil(syncOfficialPrices(env.SIRAYA_REGISTRY).catch(() => console.warn("Siraya price sync failed")));
     }
   }
 };
@@ -149,7 +151,7 @@ async function serveModelList(request: Request, env: Env, url: URL): Promise<Res
     if (admin && !identity) return Response.redirect(new URL("/admin", url).href, 302);
     if (request.method === "POST" && !isSameOrigin(request, url)) return json({ error: "invalid_origin" }, 403);
     const { registry, live } = await getListRegistry(env);
-    const rows = await modelListRows(env.SIRAYA_METADATA, registry);
+    const rows = await modelListRows(env.SIRAYA_METADATA, registry, exporting ? undefined : await officialPrices(env.SIRAYA_REGISTRY));
     if (!exporting) return modelListPage(rows, registry.generatedAt, live, admin, Boolean(identity));
     if (request.method === "GET") return exportModelList(rows.map(row => row.cells));
     let cells;

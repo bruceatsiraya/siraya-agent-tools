@@ -10,6 +10,11 @@ const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 
 async function main() {
   const ids = ['gpt-4o', 'claude-sonnet-4'];
+  const prices = Object.fromEntries(ids.map(id=>[id,{
+    checkedAt:'2026-11-23T00:00:00Z',
+    scenarios:[{currency:'USD',name:'Standard input',conditions:[{attribute:'Input Tokens',operator:'lte',value:'100000'}],
+      units:[{billingUnit:'Input Tokens',salePrice:'5',unitScale:'1000000',unit:'tokens'}]}]
+  }]));
   const worker=(await import(pathToFileURL(process.argv[2]).href)).default;
   const sqlite=new DatabaseSync(':memory:');
   const db={
@@ -26,7 +31,8 @@ async function main() {
       if(req.url==='/fixture/models'){res.end(JSON.stringify({data:ids.map(id=>({id,object:'model'}))}));return}
       const chunks=[];for await(const chunk of req)chunks.push(chunk);
       const request=new Request(origin+req.url,{method:req.method,headers:req.headers,body:chunks.length?Buffer.concat(chunks):undefined});
-      const response=await worker.fetch(request,{SIRAYA_METADATA:db,SIRAYA_API_KEY:'fixture',SIRAYA_BASE_URL:origin+'/fixture'});
+      const response=await worker.fetch(request,{SIRAYA_METADATA:db,SIRAYA_API_KEY:'fixture',SIRAYA_BASE_URL:origin+'/fixture',
+        SIRAYA_REGISTRY:{get:async()=>prices}});
       res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));
     }catch(e){console.error(e);res.writeHead(500);res.end()}
   });
@@ -98,6 +104,13 @@ async function main() {
     await sales.locator('#estimate-slider').press('End');
     assert.equal(await sales.locator('#estimate-amount').inputValue(),'20000');
     assert.equal(await sales.locator('#estimate-factor').textContent(),'63.5%');
+    await sales.locator('#estimate-scope').selectOption('model');
+    await sales.locator('#estimate-target').selectOption(ids[0]);
+    assert.match(await sales.locator('#estimate-scenario').innerText(),/Input Tokens lte 100000/);
+    await sales.locator('#estimate-slider').press('End');
+    assert.equal(await sales.locator('#estimate-quantity').inputValue(),'1000000');
+    assert.equal(await sales.locator('#estimate-factor').textContent(),'72.0%');
+    assert.match(await sales.locator('#estimate-pay').textContent(),/3\.60/);
     await sales.locator('#customer').fill('E2E Customer');
     const submission=sales.waitForResponse(r=>r.url()===origin+'/sales/quotes'&&r.request().method()==='POST');
     await sales.locator('#create').click();
@@ -113,6 +126,11 @@ async function main() {
     assert.equal((await customer.goto(oldUrl)).status(),200);
     assert.match(await customer.locator('main').innerText(),/v1/);
     assert.match(await customer.locator('table').innerText(),/0\.68/);
+    assert.match(await customer.locator('table').innerText(),/USD 5 \/ 1000000 tokens/);
+    prices[ids[0]].scenarios[0].units[0].salePrice='10';
+    await customer.reload();
+    assert.match(await customer.locator('table').innerText(),/USD 5 \/ 1000000 tokens/);
+    assert.doesNotMatch(await customer.locator('table').innerText(),/USD 10 \/ 1000000 tokens/);
     await sales.reload();
     await sales.getByText('最近報價',{exact:true}).click();
     await sales.locator('[data-revise]').click();

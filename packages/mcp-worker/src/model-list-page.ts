@@ -1,3 +1,4 @@
+import { priceSummary } from "./siraya-prices.js";
 import { siteSidebar, siteStyles } from "./site-shell.js";
 import { headers, referenceNotes, type modelListRows } from "./model-list.js";
 
@@ -9,7 +10,7 @@ function html(value: unknown): string {
 
 export function modelListPage(rows: Row[], generatedAt: string, live: boolean, admin: boolean, signedIn: boolean): Response {
   const mode = admin ? "?manage=1" : "";
-  const body = rows.map(({ cells, category, infron, openRouter, manual, automatic }) => {
+  const body = rows.map(({ cells, category, infron, openRouter, manual, automatic, officialPrice }) => {
     const benchmark = [infron, openRouter].filter(Boolean).map(metric =>
       metric ? metric.source + " · TTFT " + (metric.ttft?.toFixed(2) ?? "—") + " s · " +
       (metric.tps?.toFixed(1) ?? "—") + " tok/s · " + metric.observed_at.slice(0, 10) : "").join("\n");
@@ -30,7 +31,8 @@ export function modelListPage(rows: Row[], generatedAt: string, live: boolean, a
       if (name === "tps" && benchmark) return `<td><details><summary>${html(formatted ?? "—")}</summary><small>${html(benchmark)}</small></details></td>`;
       return `<td${index === 2 || index === 3 ? " data-no-translate" : ""}>${html(formatted ?? "—")}</td>`;
     }).join("");
-    return `<tr data-id="${html(cells[3])}" data-category="${html(category)}" data-family="${html(cells[1])}">${values}<td><button type="button" data-save>Save</button></td></tr>`;
+    const price = priceSummary(officialPrice);
+    return `<tr data-id="${html(cells[3])}" data-category="${html(category)}" data-family="${html(cells[1])}">${values}<td>${price ? `<details><summary>View pricing</summary><small data-no-translate>${html(price)}</small></details>` : "—"}</td><td><button type="button" data-save>Save</button></td></tr>`;
   }).join("");
   const families = [...new Set(rows.map(row => String(row.cells[1])))].sort();
   const categories = [...new Set(rows.map(row => row.category))].sort();
@@ -70,7 +72,7 @@ export function modelListPage(rows: Row[], generatedAt: string, live: boolean, a
     const note = name === "RPM" || name === "TPM" ? referenceNotes[1]
       : name === "TTFT (s)" || name === "TPS" ? referenceNotes[0] : "";
     return `<th scope="col"${note ? ` title="${html(note)}" aria-describedby="metric-notes"` : ""}>${html(name)}</th>`;
-  }).join("")}<th scope="col">Actions</th></tr></thead>
+  }).join("")}<th scope="col">Siraya list price</th><th scope="col">Actions</th></tr></thead>
   <tbody>${body}</tbody></table></div>
   <p id="metric-notes">${referenceNotes.map(html).join(" ")}</p>
   <p>Weekly benchmark snapshots. Infron uses the 30-day median. OpenRouter uses the median of endpoint p50s over the preceding 30 minutes. ${admin ? "Open Sources to compare weekly figures." : "Expand TPS to compare sources."}</p>
