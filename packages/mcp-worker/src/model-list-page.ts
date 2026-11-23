@@ -1,4 +1,4 @@
-import { priceSummary } from "./siraya-prices.js";
+import { priceDetails } from "./siraya-prices.js";
 import { siteSidebar, siteStyles } from "./site-shell.js";
 import { headers, referenceNotes, type modelListRows } from "./model-list.js";
 
@@ -31,8 +31,8 @@ export function modelListPage(rows: Row[], generatedAt: string, live: boolean, a
       if (name === "tps" && benchmark) return `<td><details><summary>${html(formatted ?? "—")}</summary><small>${html(benchmark)}</small></details></td>`;
       return `<td${index === 2 || index === 3 ? " data-no-translate" : ""}>${html(formatted ?? "—")}</td>`;
     }).join("");
-    const price = priceSummary(officialPrice);
-    return `<tr data-id="${html(cells[3])}" data-category="${html(category)}" data-family="${html(cells[1])}">${values}<td>${price ? `<details><summary>View pricing</summary><small data-no-translate>${html(price)}</small></details>` : "—"}</td><td><button type="button" data-save>Save</button></td></tr>`;
+    const price = priceDetails(officialPrice,html);
+    return `<tr data-id="${html(cells[3])}" data-category="${html(category)}" data-family="${html(cells[1])}">${values}<td>${price}</td><td><button type="button" data-save>Save</button></td></tr>`;
   }).join("");
   const families = [...new Set(rows.map(row => String(row.cells[1])))].sort();
   const categories = [...new Set(rows.map(row => row.category))].sort();

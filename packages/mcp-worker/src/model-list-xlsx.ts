@@ -1,3 +1,4 @@
+import { conditionLabel, type CatalogPrice } from "./siraya-prices.js";
 import { headers, referenceNotes, type Cell } from "./model-list.js";
 
 const encoder = new TextEncoder();
@@ -64,12 +65,21 @@ function zip(files: Record<string, string>): ArrayBuffer {
   return result.buffer;
 }
 
-export function exportModelList(rows: Cell[][]): Response {
+export function exportModelList(rows: Cell[][], catalog:{cells:Cell[];officialPrice?:CatalogPrice}[]=[]): Response {
   const ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
   const rel = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
   const pkg = "http://schemas.openxmlformats.org/package/2006/relationships";
   const banner = ["SIRAYA Model Router | Model List", ...referenceNotes,
     "Discount Factor is a multiplier. For example, 0.88 means 88% of list price."];
+  const priceRows:Cell[][]=[["Model ID","Scenario","Conditions","Billing item","Currency","List price","Per quantity","Unit","Synced (UTC)"]];
+  for(const row of catalog){
+    const price=row.officialPrice;
+    if(!price?.scenarios.length){priceRows.push([row.cells[3],"—"]);continue}
+    for(const scenario of price.scenarios)for(const unit of scenario.units){
+      priceRows.push([row.cells[3],scenario.name,conditionLabel(scenario),unit.billingUnit,scenario.currency,Number(unit.salePrice),Number(unit.unitScale),unit.unit,price.checkedAt]);
+    }
+  }
+  const pricingBody=priceRows.map((row,i)=>'<row>'+row.map(v=>typeof v==='number'?'<c><v>'+v+'</v></c>':'<c s="'+(i?0:3)+'" t="inlineStr"><is><t>'+xml(String(v??''))+'</t></is></c>').join('')+'</row>').join('');
   const sheetRows = [...banner.map(value => [value]), headers, ...rows];
   const body = sheetRows.map((row, ri) => {
     const cells = row.map((value, ci) => {
@@ -99,11 +109,12 @@ export function exportModelList(rows: Cell[][]): Response {
     `<col min="${index + 1}" max="${index + 1}" width="${width}" customWidth="1"/>`).join("");
   const merges = banner.map((_, index) => `<mergeCell ref="A${index + 1}:O${index + 1}"/>`).join("");
   return new Response(zip({
-    "[Content_Types].xml": '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>',
+    "[Content_Types].xml": '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>',
     "_rels/.rels": `<Relationships xmlns="${pkg}"><Relationship Id="rId1" Type="${rel}/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
-    "xl/workbook.xml": `<workbook xmlns="${ns}" xmlns:r="${rel}"><sheets><sheet name="Model List" sheetId="1" r:id="rId1"/></sheets></workbook>`,
-    "xl/_rels/workbook.xml.rels": `<Relationships xmlns="${pkg}"><Relationship Id="rId1" Type="${rel}/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="${rel}/styles" Target="styles.xml"/></Relationships>`,
+    "xl/workbook.xml": `<workbook xmlns="${ns}" xmlns:r="${rel}"><sheets><sheet name="Model List" sheetId="1" r:id="rId1"/><sheet name="List Prices" sheetId="2" r:id="rId3"/></sheets></workbook>`,
+    "xl/_rels/workbook.xml.rels": `<Relationships xmlns="${pkg}"><Relationship Id="rId1" Type="${rel}/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId3" Type="${rel}/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId2" Type="${rel}/styles" Target="styles.xml"/></Relationships>`,
     "xl/styles.xml": `<styleSheet xmlns="${ns}"><numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00##"/></numFmts><fonts count="${fonts.length}">${fonts.join("")}</fonts><fills count="${fills.length}">${fills.join("")}</fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${styles.length}">${styles.join("")}</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`,
+    "xl/worksheets/sheet2.xml": `<worksheet xmlns="${ns}"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="4" width="35" customWidth="1"/><col min="5" max="8" width="15" customWidth="1"/><col min="9" max="9" width="28" customWidth="1"/></cols><sheetData>${pricingBody}</sheetData><autoFilter ref="A1:I${priceRows.length}"/></worksheet>`,
     "xl/worksheets/sheet1.xml": `<worksheet xmlns="${ns}"><sheetViews><sheetView showGridLines="0" workbookViewId="0"><pane ySplit="5" topLeftCell="A6" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${columns}</cols><sheetData>${body}</sheetData><autoFilter ref="A5:O${rows.length + 5}"/><mergeCells count="${banner.length}">${merges}</mergeCells></worksheet>`
   }), {
     headers: {
