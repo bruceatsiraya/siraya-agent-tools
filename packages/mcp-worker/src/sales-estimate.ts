@@ -1,17 +1,9 @@
 export const estimatePanel = `<section id="estimate"><h2>價格試算</h2>
-<div class="estimate-grid"><div>
-<label>消費範圍<select id="estimate-scope"><option value="platform">全平台</option><option value="vendor">單供應商</option><option value="model">單模型</option></select></label>
-<label id="estimate-target-label" hidden>適用對象<select id="estimate-target"></select></label>
-<div id="estimate-official" hidden><label>計價情境<select id="estimate-scenario"></select></label><label>計價項目<select id="estimate-unit"></select></label><label>每月用量<input id="estimate-quantity" type="number" min="0" max="1000000000000" value="1000" form="estimate-only"></label><small id="estimate-rate" data-no-translate></small></div>
-<label id="estimate-amount-label">每月原價消費（USD）<input id="estimate-amount" form="estimate-only" type="number" min="0" max="1000000000" value="10000"></label>
-<input id="estimate-slider" type="range" min="0" max="20000" step="1" value="10000" aria-label="每月原價消費（USD）">
-<label>階梯設定（USD 上限 × 實付係數）<input id="estimate-tiers" form="estimate-only" placeholder="2000:1, 5000:0.9, *:0.8"></label>
-<small>門檻按模型配價後金額累計。空白表示不加階梯優惠，最多四檔。</small>
-</div><div>
-<p><strong id="estimate-factor">—</strong> <span>綜合實付比例</span> · <strong id="estimate-pay">—</strong> <span>預估應付</span></p>
-<canvas id="estimate-chart" width="760" height="270" role="img"></canvas>
-<small id="estimate-mix"></small><p id="estimate-error" role="status"></p>
-</div></div></section>`;
+<label>每月原價消費（USD）<input id="estimate-amount" form="estimate-only" type="number" min="0" max="1000000000" step=".01" value="75000"></label>
+<input id="estimate-slider" type="range" min="0" max="200000" step=".01" value="75000" aria-label="Monthly list-price spend (USD)">
+<p id="estimate-note"></p><div style="overflow:auto"><table><thead id="estimate-head"></thead><tbody id="estimate-results"></tbody></table></div>
+<select id="estimate-model" aria-label="Chart model"><option>Claude</option><option>GPT</option><option>Gemini</option></select>
+<p id="estimate-legend"></p><canvas id="estimate-chart" width="760" height="220" role="img"></canvas></section>`;
 
 export function estimatePayment(base: number, tiers: {end:number;factor:number}[]) {
   let start=0, payment=0;
@@ -24,78 +16,52 @@ export function estimatePayment(base: number, tiers: {end:number;factor:number}[
 
 export const estimateScript = `
 ${estimatePayment.toString()}
-const amount=$('#estimate-amount'), slider=$('#estimate-slider'), escope=$('#estimate-scope'), target=$('#estimate-target');
-const scenario=$('#estimate-scenario'), unit=$('#estimate-unit'), quantity=$('#estimate-quantity');
-const scenarioList=()=>escope.value==='model'?(byId.get(target.value)?.officialPrice?.scenarios??[]).filter(p=>p.currency==='USD'):[];
-let sliderLimit=20000;
-const selectedUnit=()=>scenarioList()[Number(scenario.value)]?.units[Number(unit.value)];
-function updateUnits(){
-  const units=scenarioList()[Number(scenario.value)]?.units??[];
-  unit.replaceChildren(...units.map((u,i)=>new Option(u.billingUnit,String(i))));
-  sliderLimit=selectedUnit()?Math.max(100,Number(selectedUnit().unitScale)):20000;
-  renderEstimate();
-}
-function updateScenarios(){
-  const prices=scenarioList();
-  scenario.replaceChildren(...prices.map((p,i)=>new Option([p.name,...p.conditions.map(c=>c.attribute+' '+c.operator+' '+c.value)].join(' · '),String(i))));
-  $('#estimate-official').hidden=!prices.length;
-  $('#estimate-amount-label').hidden=!!prices.length;
-  updateUnits();
-}
-function estimateTargets(){
-  const options=escope.value==='vendor'?[...new Set(models.map(m=>m.vendor))]:models.map(m=>m.id);
-  target.replaceChildren(...options.map(value=>{const o=new Option(value,value);o.dataset.noTranslate='';return o}));
-  $('#estimate-target-label').hidden=escope.value==='platform';updateScenarios();
-}
+const amount=$('#estimate-amount'),slider=$('#estimate-slider'),chartModel=$('#estimate-model');
+const estimateRates={Claude:[.9,.74,.82],GPT:[.8,.64,.72],Gemini:[.85,.71,.78]};
 function renderEstimate(){
-  const chart=$('#estimate-chart'), ctx=chart.getContext('2d');
-  const en=document.documentElement.lang==='en', fmt=new Intl.NumberFormat(en?'en-US':'zh-TW',{style:'currency',currency:'USD'});
-  ctx.clearRect(0,0,760,270);
-  const scoped=models.filter(m=>escope.value==='platform'||(escope.value==='vendor'?m.vendor:m.id)===target.value);
-  const selected=scoped.filter(m=>item(m.id).selected);
-  const group=selected.length?selected:scoped;
-  const factor=group.reduce((sum,m)=>sum+effectiveFactor(m,state),0)/group.length;
-  $('#estimate-mix').textContent=group.length>1?'多模型按原價消費等額分配。':'';
-  const raw=$('#estimate-tiers').value.trim()||'*:1';
-  const tiers=raw.split(',').map((token,i,all)=>{
-    const match=token.trim().match(/^(\\*|\\d+(?:\\.\\d+)?)\\s*:\\s*(\\d+(?:\\.\\d+)?)$/);
-    return match&&{end:match[1]==='*'&&i===all.length-1?Infinity:Number(match[1]),factor:Number(match[2])};
-  });
-  const billing=selectedUnit();
-  const rate=billing?Number(billing.salePrice)/Number(billing.unitScale):1;
-  const usage=billing?quantity.valueAsNumber:amount.valueAsNumber;
-  const spend=usage*rate;
-  if(Number.isFinite(usage)&&usage<=(billing?1e12:1e9))sliderLimit=Math.max(sliderLimit,Math.ceil(usage));
-  const max=sliderLimit;
-  slider.max=String(max);slider.value=String(usage);
-  slider.setAttribute('aria-label',billing?'每月用量':'每月原價消費（USD）');
-  $('#estimate-rate').textContent=billing?'USD '+billing.salePrice+' / '+billing.unitScale+' '+billing.unit+' · '+fmt.format(spend):'';
-  const invalid=tiers.length>4||tiers.at(-1)?.end!==Infinity||tiers.some((t,i)=>!t||!(t.end>(tiers[i-1]?.end??0))||t.factor>(tiers[i-1]?.factor??1));
-  const error=invalid?'請輸入遞增門檻與遞減係數，最後一檔使用 *。':!group.length?'此範圍沒有模型。':!Number.isFinite(spend)||spend<0||spend>1e9||usage>(billing?1e12:1e9)?'請輸入有效的消費金額。':'';
-  $('#estimate-error').textContent=error;
-  const pay=error?NaN:estimatePayment(spend*factor,tiers);
-  const percent=spend=>spend?estimatePayment(spend*factor,tiers)/spend:factor*tiers[0].factor;
-  const percentage=v=>(v*100).toFixed(1)+'%';
-  $('#estimate-pay').textContent=error?'—':fmt.format(pay);
-  $('#estimate-factor').textContent=error||!spend?'—':percentage(percent(spend));
-  chart.setAttribute('aria-label',error||($('#estimate-factor').textContent+' · '+fmt.format(spend)));
-  if(error)return;
-  const x=v=>62+v/max*665, y=v=>224-v*193;
-  ctx.font='15px system-ui';ctx.fillStyle='#52647b';
-  for(const mark of [0,.25,.5,.75,1]){
-    ctx.fillText(mark*100+'%',4,y(mark)+5);
-    ctx.strokeStyle='#dce5eb';ctx.beginPath();ctx.moveTo(62,y(mark));ctx.lineTo(727,y(mark));ctx.stroke();
+  const spend=amount.valueAsNumber,en=document.documentElement.lang==='en';
+  const valid=Number.isFinite(spend)&&spend>=0&&spend<=1e9;
+  const max=Math.max(200000,valid?Math.ceil(spend):0);
+  if(valid){slider.max=String(max);slider.value=amount.value}
+  const ends=[50000,100000,Infinity],tier=ends.findIndex(end=>spend<=end);
+  const tiers=rates=>rates.map((factor,i)=>({factor,end:ends[i]}));
+  const rate=v=>en?Number((v*100).toFixed(2))+'%':Number((v*10).toFixed(3))+' 折';
+  const money=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'});
+  const titles=en?['Model','Current tier rate','Blended rate','Estimated payment']:['模型','當前檔折扣','累計綜合折扣','累計實付'];
+  $('#estimate-head').innerHTML='<tr>'+titles.map(v=>'<th>'+v+'</th>').join('')+'</tr>';
+  $('#estimate-note').textContent=valid?(en?'Each model is estimated separately. Tiers change above $50,000 and $100,000.':'各模型按所選用量獨立試算，超過 $50,000 和 $100,000 的部分進入下一檔。'):(en?'Enter a valid spend amount.':'請輸入有效的消費金額。');
+  $('#estimate-results').innerHTML=Object.entries(estimateRates).map(([model,rates])=>{
+    const pay=estimatePayment(spend,tiers(rates));
+    const cells=[model,valid?rate(rates[tier]):'—',valid&&spend?rate(pay/spend):'—',valid?money.format(pay):'—'];
+    return '<tr>'+cells.map(v=>'<td>'+v+'</td>').join('')+'</tr>';
+  }).join('');
+  const legend=en?'Blue · Current tier rate / Green · Blended rate':'藍線 · 當前檔折扣 ／ 綠線 · 累計綜合折扣';
+  $('#estimate-legend').textContent=legend;
+  const canvas=$('#estimate-chart'),ctx=canvas.getContext('2d');
+  canvas.setAttribute('aria-label',chartModel.value+' · '+legend);
+  ctx.clearRect(0,0,760,220);
+  if(!valid)return;
+  const rates=estimateRates[chartModel.value],schedule=tiers(rates);
+  const x=v=>48+655*v/max,y=v=>180-(v-.6)*390;
+  ctx.font='13px system-ui';ctx.fillStyle='#52647b';
+  for(const f of [.6,.7,.8,.9,1])ctx.fillText(rate(f),0,y(f)+4);
+  for(const v of [0,50000,100000,max])ctx.fillText('$'+v.toLocaleString('en-US'),x(v)-12,208);
+  ctx.lineWidth=3;ctx.strokeStyle='#357bc0';ctx.beginPath();ctx.moveTo(x(0),y(rates[0]));
+  schedule.forEach(({end,factor},i)=>{ctx.lineTo(x(Math.min(end,max)),y(factor));if(i<2)ctx.lineTo(x(end),y(rates[i+1]))});
+  ctx.stroke();
+  const blend=v=>v?estimatePayment(v,schedule)/v:rates[0];
+  ctx.strokeStyle='#116d63';ctx.beginPath();ctx.moveTo(x(0),y(rates[0]));
+  for(const [i,end] of [50000,100000,max].entries()){
+    const start=i?ends[i-1]:0;
+    for(let j=1;j<=50;j++){const v=start+(end-start)*j/50;ctx.lineTo(x(v),y(blend(v)))}
   }
-  ctx.fillText(billing?'0':fmt.format(0),62,254);ctx.textAlign='right';ctx.fillText(billing?max.toLocaleString()+' '+billing.unit:fmt.format(max),727,254);ctx.textAlign='left';
-  ctx.strokeStyle='#116d63';ctx.lineWidth=3;ctx.beginPath();
-  const samples=[...new Set([...Array.from({length:181},(_,i)=>i*max/180),...tiers.map(t=>t.end/(factor*rate)).filter(v=>v>0&&v<max)])].sort((a,b)=>a-b);
-  samples.forEach((v,i)=>i?ctx.lineTo(x(v),y(percent(v*rate))):ctx.moveTo(x(v),y(percent(v))));ctx.stroke();
-  ctx.fillStyle='#116d63';ctx.beginPath();ctx.arc(x(usage),y(percent(spend)),6,0,Math.PI*2);ctx.fill();
+  ctx.stroke();
+  for(const [f,color] of [[rates[tier],'#357bc0'],[blend(spend),'#116d63']]){
+    ctx.fillStyle=color;ctx.beginPath();ctx.arc(x(spend),y(f),4,0,Math.PI*2);ctx.fill();
+  }
 }
-amount.oninput=()=>{if(amount.valueAsNumber>=0&&amount.valueAsNumber<=1e9){slider.max=String(Math.max(20000,Math.ceil(amount.valueAsNumber)));slider.value=amount.value}renderEstimate()};
-slider.oninput=()=>{(selectedUnit()?quantity:amount).value=slider.value;renderEstimate()};
-scenario.onchange=updateUnits;unit.onchange=renderEstimate;quantity.oninput=renderEstimate;
-escope.onchange=estimateTargets;target.onchange=updateScenarios;$('#estimate-tiers').oninput=renderEstimate;
+amount.oninput=renderEstimate;slider.oninput=()=>{amount.value=slider.value;renderEstimate()};
+chartModel.onchange=renderEstimate;
 new MutationObserver(renderEstimate).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
-estimateTargets();
+renderEstimate();
 `;
