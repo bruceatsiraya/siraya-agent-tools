@@ -4,7 +4,7 @@ import { type modelListRows } from './model-list.js';
 import { applyVendor, effectiveFactor, restoreDraft, validFactor, vendorChanges } from './sales-pricing.js';
 const html = (v: unknown) => String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 export function salesEditor(rows: Awaited<ReturnType<typeof modelListRows>>, username: string, floors:Record<string,number>={}, templates:{id:number;name:string;version:number;items_json:string}[]=[], product=false): string {
-  const models=rows.map(r=>({id:String(r.cells[3]),vendor:String(r.cells[1]),name:String(r.cells[2]),category:String(r.cells[5]),officialPrice:r.officialPrice,floor:floors[String(r.cells[3])]??(typeof r.cells[4]==='number'?r.cells[4]:1),base:typeof r.cells[4]==='number'?r.cells[4]:1}));
+  const models=rows.map(r=>({id:String(r.cells[3]),vendor:String(r.cells[1]),family:r.modelFamily,name:String(r.cells[2]),category:String(r.cells[5]),officialPrice:r.officialPrice,floor:floors[String(r.cells[3])]??(typeof r.cells[4]==='number'?r.cells[4]:1),base:typeof r.cells[4]==='number'?r.cells[4]:1}));
   const options=(items:string[])=>[...new Set(items)].sort().map(s=>`<option value="${html(s)}">${html(s)}</option>`).join('');
   return `<div id="sales-workbench" data-owner="${html(username)}"><div class="sales-heading"><h1>銷售報價工作台</h1><span id="draft-status" role="status">草稿只儲存在此瀏覽器</span></div>
   <form id="form"><h2>客戶資料</h2><section class="quote-settings"><label>客戶名稱<input id="customer" maxlength="120" required placeholder="例如：星海科技"></label><label>有效天數<input id="days" type="number" min="1" max="365" value="30" required></label><label class="quote-note">報價說明<input id="note" maxlength="2000" placeholder="付款條件、服務範圍或聯絡方式"></label></section>

@@ -94,7 +94,7 @@ export async function modelListRows(db: D1Database, registry: SirayaRegistry, pr
       limit("rpm"), limit("tpm"), manual.ttft ?? automatic.ttft,
       manual.tps ?? automatic.tps
     ];
-    return { cells, category, infron, openRouter, manual, automatic, officialPrice: prices[model.id.toLowerCase()] };
+    return { cells, modelFamily: model.family, category, infron, openRouter, manual, automatic, officialPrice: prices[model.id.toLowerCase()] };
   }).sort((a, b) => String(a.cells[1]).localeCompare(String(b.cells[1])) ||
     a.category.localeCompare(b.category) ||
     String(a.cells[3]).localeCompare(String(b.cells[3]), "en", { numeric: true }))
