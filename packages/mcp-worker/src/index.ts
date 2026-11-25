@@ -19,9 +19,8 @@ import { renderDocs } from "./docs.js";
 import { officialPrices, syncOfficialPrices } from "./siraya-prices.js";
 import { salesRoute } from "./sales.js";
 import { correctModelIdentities } from "./model-corrections.js";
-import { siteLanguageScript } from "./site-language.js";
 import { renderModelCatalog } from "./catalog.js";
-import { authenticateAdmin, canManageResearchSettings, login, logout, renderAdminPortal } from "./auth.js";
+import { authenticateAdmin, canManageResearchSettings, login, logout, manageAccountRoles, renderAdminPortal } from "./auth.js";
 import { enrichPublicInfo } from "./public-info.js";
 import {
   adminModel,
@@ -60,9 +59,6 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }));
-    if (url.pathname === "/site-language.js" && request.method === "GET") {
-      return new Response(siteLanguageScript, { headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "no-cache" } });
-    }
     if (url.pathname === "/sales" || url.pathname.startsWith("/sales/") || url.pathname.startsWith("/quote/")) {
       try {
         return await salesRoute(request, env, async () => {
@@ -71,7 +67,7 @@ export default {
         });
       } catch (error) {
         console.error("Sales quote unavailable", error);
-        return new Response("報價服務暫時無法使用，請稍後重試。", { status: 503, headers: { "cache-control": "no-store" } });
+        return new Response("The quote service is temporarily unavailable. Try again later.", { status: 503, headers: { "cache-control": "no-store" } });
       }
     }
     if (url.pathname === "/admin/auth/login" && request.method === "POST") return login(request, env);
@@ -328,6 +324,9 @@ async function handleAdmin(request: Request, env: Env, url: URL): Promise<Respon
   if (!identity) return json({ error: "unauthorized" }, 401);
   if (identity.method === "session" && !isSameOrigin(request, url)) return json({ error: "invalid_origin" }, 403);
   try {
+    if (url.pathname === "/admin/accounts" && (request.method === "POST" || request.method === "PATCH")) {
+      return await manageAccountRoles(request, env, identity);
+    }
     const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
     if (url.pathname === "/admin/settings/research-model" && request.method === "PATCH") {
       if (!canManageResearchSettings(identity)) return json({ error: "research_settings_access_required" }, 403);

@@ -10,6 +10,7 @@ export interface AdminIdentity {
   method: "session" | "token";
   pricing_role: "sales" | "product";
   can_manage_research_settings?: number;
+  can_manage_accounts?: number;
 }
 
 interface UserRow {
@@ -34,7 +35,7 @@ export async function authenticateAdmin(request: Request, env: AuthEnv): Promise
   const token = cookieValue(request, COOKIE_NAME);
   if (!token) return null;
   const tokenHash = await sha256(token);
-  const row = await env.SIRAYA_METADATA.prepare(`SELECT u.id, u.username, u.pricing_role, u.can_manage_research_settings
+  const row = await env.SIRAYA_METADATA.prepare(`SELECT u.id, u.username, u.pricing_role, u.can_manage_research_settings, u.can_manage_accounts
     FROM admin_sessions s JOIN admin_users u ON u.id = s.user_id
     WHERE s.token_hash = ? AND s.expires_at > ? AND u.active = 1`)
     .bind(tokenHash, new Date().toISOString()).first<Omit<AdminIdentity, "method">>();
@@ -118,6 +119,31 @@ export async function logout(request: Request, env: AuthEnv): Promise<Response> 
   return response;
 }
 
+export async function manageAccountRoles(request: Request, env: AuthEnv, identity: AdminIdentity): Promise<Response> {
+  if (identity.method !== "token" && identity.can_manage_accounts !== 1) {
+    return authJson({ error: "Account management access required." }, 403);
+  }
+  if (request.method === "POST") {
+    const { results } = await env.SIRAYA_METADATA.prepare(
+      "SELECT id, username, active, pricing_role FROM admin_users ORDER BY username"
+    ).all();
+    return authJson({ accounts: results });
+  }
+  const input = await request.json().catch(() => null) as Record<string, unknown> | null;
+  const id = input?.id;
+  const role = input?.role;
+  const expected = input?.expectedRole;
+  if (typeof id !== "number" || !Number.isSafeInteger(id) || id <= 0 ||
+      (role !== "sales" && role !== "product") || (expected !== "sales" && expected !== "product")) {
+    return authJson({ error: "Choose an account and a valid role." }, 400);
+  }
+  const result = await env.SIRAYA_METADATA.prepare(
+    "UPDATE admin_users SET pricing_role = ?, updated_at = ? WHERE id = ? AND pricing_role = ?"
+  ).bind(role, new Date().toISOString(), id, expected).run();
+  if (!result.meta.changes) return authJson({ error: "The account changed. Reload the page and try again." }, 409);
+  return authJson({ ok: true });
+}
+
 export function renderAdminPortal(identity: AdminIdentity | null, analysisModel?: string): Response {
   const body = identity ? `
     <main class="portal" id="site-main">
@@ -125,13 +151,14 @@ export function renderAdminPortal(identity: AdminIdentity | null, analysisModel?
       <h1>Model administration</h1>
       <p class="welcome">Signed in as <strong>${escapeHtml(identity.username)}</strong></p>
       <div class="actions">
-        <a class="primary" href="/sales">銷售報價工作台</a>
+        <a class="primary" href="/sales">Sales quote builder</a>
         <a class="primary" href="/model-list?manage=1">Manage Model List</a>
         <a href="/models?manage=1">Manage model metadata</a>
-        <a href="/models?manage=1&pending=1">待確認模型</a>
+        <a href="/models?manage=1&pending=1">Models pending review</a>
         <a href="/docs/metadata">Administration guide</a>
         <button id="logout" type="button">Sign out</button>
       </div>
+      ${identity.can_manage_accounts === 1 ? accountRoleControls : ""}
       ${canManageResearchSettings(identity) && analysisModel !== undefined ? `
         <form id="research-settings" aria-labelledby="research-settings-title" method="post">
           <h2 id="research-settings-title" style="margin:0;font-size:19px">Research model settings</h2>
@@ -208,6 +235,60 @@ export function renderAdminPortal(identity: AdminIdentity | null, analysisModel?
     headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" }
   });
 }
+
+const accountRoleControls = `
+<section aria-labelledby="account-roles-title" style="margin-top:24px">
+  <h2 id="account-roles-title">Account roles</h2>
+  <p>Sales can create quotes. PM can create quotes and approve exceptions.</p>
+  <div id="account-roles"></div>
+  <p id="account-roles-status" role="status"></p>
+</section>
+<script>
+  const accountRoles = document.getElementById("account-roles");
+  const accountRoleStatus = document.getElementById("account-roles-status");
+  async function loadAccountRoles() {
+    const response = await fetch("/admin/accounts", { method: "POST" });
+    if (!response.ok) throw Error("Could not load accounts.");
+    const { accounts } = await response.json();
+    for (const account of accounts) {
+      const form = document.createElement("form");
+      const label = document.createElement("label");
+      label.textContent = account.username + (account.active ? "" : " (disabled)");
+      const role = document.createElement("select");
+      role.add(new Option("Sales", "sales"));
+      role.add(new Option("PM", "product"));
+      role.value = account.pricing_role;
+      label.append(role);
+      const save = document.createElement("button");
+      save.textContent = "Save role";
+      save.disabled = true;
+      role.addEventListener("change", () => { save.disabled = role.value === account.pricing_role; });
+      form.append(label, save);
+      form.addEventListener("submit", async event => {
+        event.preventDefault();
+        save.disabled = role.disabled = true;
+        try {
+          const response = await fetch("/admin/accounts", {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ id: account.id, role: role.value, expectedRole: account.pricing_role })
+          });
+          const result = await response.json();
+          if (!response.ok) throw Error(result.error || "Could not save the role.");
+          account.pricing_role = role.value;
+          accountRoleStatus.textContent = "Role saved for " + account.username + ".";
+        } catch (error) {
+          accountRoleStatus.textContent = error.message;
+        } finally {
+          role.disabled = false;
+          save.disabled = role.value === account.pricing_role;
+        }
+      });
+      accountRoles.append(form);
+    }
+  }
+  loadAccountRoles().catch(error => { accountRoleStatus.textContent = error.message; });
+</script>`;
 
 export async function passwordRecord(password: string, iterations = 100000): Promise<{ hash: string; salt: string; iterations: number }> {
   const salt = randomToken(18);

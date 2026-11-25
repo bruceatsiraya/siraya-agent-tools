@@ -34,8 +34,7 @@ test('browser scripts parse and embedded model data cannot break out of JSON',()
   const html=editor.salesEditor([{cells:[1,'Vendor','Example',id,0.9,'LLM']}],'tester');
   const json=html.match(/<script id="pricing-data" type="application\/json">([\s\S]*?)<\/script>/)[1];
   assert.equal(JSON.parse(json)[0].id,id);assert.ok(!json.includes('</script>'));
-  const language={};new Function('exports',ts.transpileModule(fs.readFileSync(__dirname+'/src/site-language.ts','utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText)(language);
-  new Function(language.siteLanguageScript);
+  assert.doesNotMatch(html, /\p{Script=Han}/u);
 });
 test('vendor label corrections preserve previously inherited draft discounts',()=>{
   const current=[{id:'wan2.7-r2v',vendor:'Alibaba Cloud',base:1},{id:'happyhorse-1.1-i2v',vendor:'Alibaba Cloud',base:1},{id:'qwen3.5-plus',vendor:'Alibaba Cloud',base:1}];

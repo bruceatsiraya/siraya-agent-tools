@@ -383,7 +383,7 @@ function applyModelPatch(model: SirayaModelCapability, patch?: Record<string, un
   if (!patch) return model;
   const previous=model.identityCheck ?? inferCapabilities(model.raw).identityCheck!;
   const review=asRecord(patch._identity_review);
-  const checkedVendor=typeof patch.providerName==='string'&&patch.providerName.trim()&&!['unknown','unverified','other','待確認','pending review'].includes(patch.providerName.toLowerCase());
+  const checkedVendor=typeof patch.providerName==='string'&&patch.providerName.trim()&&!['unknown','unverified','other','Unverified','pending review'].includes(patch.providerName.toLowerCase());
   const checkedCategory=typeof patch.category==='string'&&patch.category!=='unknown';
   const vendor=review.vendor===true?(checkedVendor?'confirmed':'pending'):previous.vendor;
   const category=review.category===true?(checkedCategory?'confirmed':'pending'):previous.category;

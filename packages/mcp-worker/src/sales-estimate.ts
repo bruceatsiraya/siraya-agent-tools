@@ -1,4 +1,4 @@
-export const estimatePanel = `<section id="estimate"><h2>價格試算</h2>
+export const estimatePanel = `<section id="estimate"><h2>Price calculator</h2>
 <style>
 #estimate .ec-layout{display:grid;grid-template-columns:minmax(260px,2fr) minmax(0,3fr);gap:24px;align-items:start}
 #estimate .ec-box{background:#f7f9fc;border:1px solid #d6e0ed;border-radius:10px;padding:16px;min-width:0}
@@ -19,14 +19,14 @@ export const estimatePanel = `<section id="estimate"><h2>價格試算</h2>
 #estimate-legend strong{margin-inline-start:auto;font-variant-numeric:tabular-nums}
 #estimate-results strong{font-variant-numeric:tabular-nums}
 #estimate-results div:first-child strong{color:#357bc0}
-</style><div class="ec-scope"><label><span data-ec="scope"></span><select id="estimate-scope"><option value="family">模型系列</option><option value="model">單模型</option><option value="all">總體消費</option></select></label>
+</style><div class="ec-scope"><label><span data-ec="scope"></span><select id="estimate-scope"><option value="family">Model family</option><option value="model">Single model</option><option value="all">Total spend</option></select></label>
 <label id="estimate-target-wrap"><span data-ec="target"></span><select id="estimate-target"></select></label></div><div class="ec-layout">
 <details open class="ec-box"><summary data-ec="tiers"></summary><select hidden id="estimate-mode"><option value="tiers"></option><option value="reverse"></option><option value="linear"></option></select>
-<div id="estimate-methods" style="display:flex;flex-wrap:wrap;gap:6px;margin:12px 0"><button type="button" value="tiers">按各檔折扣試算</button><button type="button" value="reverse">按目標實付率反推</button><button type="button" value="linear">無極階梯</button></div>
+<div id="estimate-methods" style="display:flex;flex-wrap:wrap;gap:6px;margin:12px 0"><button type="button" value="tiers">Set tier rates</button><button type="button" value="reverse">Solve for target rate</button><button type="button" value="linear">Continuous</button></div>
 <div id="estimate-linear" hidden><label><span data-ec="threshold"></span><input type="number" id="estimate-limit" form="estimate-only" step="any"></label><label><span data-ec="average"></span><input type="number" id="estimate-average" form="estimate-only" step="any" min=".5" max="1"></label></div>
 <div id="estimate-reverse" hidden><label><span data-ec="targetrate"></span><input id="reverse-rate" form="estimate-only" type="number" step="any" min="0" max="100"></label><p id="reverse-rule"></p><div id="reverse-rows"></div><button type="button" id="reverse-add" data-ec="add"></button><label><span data-ec="tail"></span><input id="reverse-tail" type="number" step="any" form="estimate-only" placeholder="Auto"></label></div>
 <small id="estimate-save" role="status"></small><div id="estimate-editor"></div><button type="button" id="estimate-add" data-ec="add"></button></details>
-<div class="ec-box"><label>每月原價消費（USD）<input id="estimate-amount" form="estimate-only" type="number" min="0" max="1000000000" step=".01" value="75000"></label>
+<div class="ec-box"><label>Monthly list-price spend (USD)<input id="estimate-amount" form="estimate-only" type="number" min="0" max="1000000000" step=".01" value="75000"></label>
 <input id="estimate-slider" type="range" min="0" max="200000" step=".01" value="75000" aria-label="Monthly list-price spend (USD)">
 <div id="estimate-marks" style="display:flex;flex-wrap:wrap;gap:.5rem"></div><p id="estimate-note"></p><div id="estimate-results"></div>
 
@@ -81,19 +81,17 @@ function saveEstimate(){
     if(mode.value==='tiers'&&validRows(estimatePlan))record.rows=estimatePlan;
     else if(mode.value==='linear'&&validCurve()){record.limit=limit.valueAsNumber;record.average=average.valueAsNumber}
     else if(mode.value==='reverse'&&Number.isFinite(reverseTarget)&&reverseTarget>=0&&reverseTarget<=100&&reverseRows.every((r,i)=>Number.isFinite(r.end)&&r.end>(reverseRows[i-1]?.end??0)&&r.end<1e9&&Number.isFinite(r.factor)&&r.factor>=0&&r.factor<=1)&&(reverseTail===null||Number.isFinite(reverseTail)&&reverseTail>=0&&reverseTail<=100)){record.reverse={rows:reverseRows,target:reverseTarget,tail:reverseTail}}
-    else {$('#estimate-save').textContent=ecText('請修正輸入後儲存','Correct inputs to save');return}
+    else {$('#estimate-save').textContent='Correct inputs to save';return}
     record.mode=mode.value;localStorage.setItem(recordKey(),JSON.stringify(record));
-    $('#estimate-save').textContent=ecText('已儲存至此瀏覽器','Saved in this browser');
-  }catch{$('#estimate-save').textContent=ecText('瀏覽器無法儲存設定','Browser storage unavailable')}
+    $('#estimate-save').textContent='Saved in this browser';
+  }catch{$('#estimate-save').textContent='Browser storage unavailable'}
 }
 function validCurve(){return limit.valueAsNumber>0&&limit.valueAsNumber<=1e9&&average.valueAsNumber>=.5&&average.valueAsNumber<=1}
 function editEstimate(){saveEstimate();renderEstimate()}
 
-const ecText=(zh,en)=>document.documentElement.lang==='en'?en:zh;
 function estimateLabels(){
-  const labels={targetrate:['目標綜合實付率（%）','Target blended pay rate (%)'],tail:['超額部分實付率（%，留空維持目標）','Overage rate (%, blank to maintain target)'],mode:['計價方式','Pricing mode'],threshold:['目標原價用量（USD）','Target spend (USD)'],average:['目標綜合實付比例（0.5–1）','Target blended pay rate (0.5–1)'],scope:['消費範圍','Usage scope'],target:estimateScope.value==='model'?['模型','Model']:['模型系列','Model family'],tiers:['分段計價設定','Pricing tiers'],add:['新增檔位','Add tier']};
-  for(const el of document.querySelectorAll('[data-ec]'))el.textContent=ecText(...labels[el.dataset.ec]);
-  [['模型系列','Model family'],['單模型','Single model'],['總體消費','Total spend']].forEach((pair,i)=>estimateScope.options[i].textContent=ecText(...pair));
+  const labels={targetrate:'Target blended pay rate (%)',tail:'Overage rate (%, blank to maintain target)',mode:'Pricing mode',threshold:'Target spend (USD)',average:'Target blended pay rate (0.5–1)',scope:'Usage scope',target:estimateScope.value==='model'?'Model':'Model family',tiers:'Pricing tiers',add:'Add tier'};
+  for(const el of document.querySelectorAll('[data-ec]'))el.textContent=labels[el.dataset.ec];
 }
 let estimatePlan,estimateDragging=false;
 function loadEstimateTarget(){
@@ -107,7 +105,7 @@ function loadEstimateTarget(){
   reverseTarget=saved?.reverse?.target??77;reverseTail=saved?.reverse?.tail??null;
   mode.value=['reverse','linear'].includes(saved?.mode)?saved.mode:'tiers';limit.value=saved?.limit??100000;average.value=saved?.average??.8;
   if(!validCurve()){limit.value=100000;average.value=.8}
-  $('#estimate-save').textContent=estimateCustomer()?ecText('依客戶及範圍自動儲存','Autosaved by customer and scope'):ecText('填寫客戶名稱後可儲存','Enter a customer name to save');
+  $('#estimate-save').textContent=estimateCustomer()?'Autosaved by customer and scope':'Enter a customer name to save';
   drawEstimateEditor();renderEstimate();
 }
 function loadEstimateScope(preferred){
@@ -126,13 +124,13 @@ function drawReverseEditor(){
       label.textContent=labelText;box.type='number';box.step='any';box.setAttribute('form','estimate-only');box.value=value;
       box.oninput=()=>{edit(box.valueAsNumber);editEstimate()};label.append(box);line.append(label);return box;
     }
-    input(i===reverseRows.length-1?ecText('目標用量（USD）','Target spend (USD)'):ecText('檔位上限（USD）','Tier ceiling (USD)'),row.end,v=>row.end=v);
-    const factor=input(ecText('該檔實付率（%）','Tier pay rate (%)'),row.factor*100,v=>row.factor=v/100);
+    input(i===reverseRows.length-1?'Target spend (USD)':'Tier ceiling (USD)',row.end,v=>row.end=v);
+    const factor=input('Tier pay rate (%)',row.factor*100,v=>row.factor=v/100);
     factor.readOnly=!row.locked;factor.dataset.result=i;
     const label=document.createElement('label'),lock=document.createElement('input');
-    lock.type='checkbox';lock.checked=row.locked;label.append(lock,ecText('鎖定','Lock'));line.append(label);
+    lock.type='checkbox';lock.checked=row.locked;label.append(lock,'Lock');line.append(label);
     lock.onchange=()=>{if(lock.checked&&factor.value!=='')row.factor=Number(factor.value)/100;row.locked=lock.checked;factor.readOnly=!row.locked;editEstimate()};
-    if(reverseRows.length>1){const remove=document.createElement('button');remove.type='button';remove.textContent=ecText('移除','Remove');remove.onclick=()=>{reverseRows.splice(i,1);drawReverseEditor();editEstimate()};line.append(remove)}
+    if(reverseRows.length>1){const remove=document.createElement('button');remove.type='button';remove.textContent='Remove';remove.onclick=()=>{reverseRows.splice(i,1);drawReverseEditor();editEstimate()};line.append(remove)}
     host.append(line);
   });
 }
@@ -152,10 +150,10 @@ function drawEstimateEditor(){
       wrap.textContent=label;input.type='number';input.step='any';input.setAttribute('form','estimate-only');input.value=String(value);
       input.oninput=()=>{onChange(input.valueAsNumber);editEstimate()};wrap.append(input);line.append(wrap);
     }
-    if(i<estimatePlan.length-1)field(ecText('第 '+(i+1)+' 檔上限（USD）','Tier '+(i+1)+' ceiling (USD)'),row.end,v=>row.end=v);
-    else line.append(ecText('最後一檔 · 無上限','Final tier · No ceiling'));
-    field(i===estimatePlan.length-1?ecText('超額部分實付率（%）','Overage pay rate (%)'):ecText('該檔實付率（%）','Tier pay rate (%)'),Number((row.factor*100).toFixed(8)),v=>row.factor=v/100);
-    if(i<estimatePlan.length-1){const del=document.createElement('button');del.type='button';del.textContent=ecText('移除','Remove');del.onclick=()=>{estimatePlan.splice(i,1);drawEstimateEditor();editEstimate()};line.append(del)}
+    if(i<estimatePlan.length-1)field('Tier '+(i+1)+' ceiling (USD)',row.end,v=>row.end=v);
+    else line.append('Final tier · No ceiling');
+    field(i===estimatePlan.length-1?'Overage pay rate (%)':'Tier pay rate (%)',Number((row.factor*100).toFixed(8)),v=>row.factor=v/100);
+    if(i<estimatePlan.length-1){const del=document.createElement('button');del.type='button';del.textContent='Remove';del.onclick=()=>{estimatePlan.splice(i,1);drawEstimateEditor();editEstimate()};line.append(del)}
     editor.append(line);
   });
 }
@@ -175,7 +173,7 @@ function restoreEstimateView(){
 estimateScope.onchange=()=>{loadEstimateScope();rememberEstimateView()};
 estimateTarget.onchange=()=>{loadEstimateTarget();rememberEstimateView()};
 function renderEstimate(){
-  const spend=amount.valueAsNumber,en=document.documentElement.lang==='en';
+  const spend=amount.valueAsNumber;
   const linear=mode.value==='linear',goal=limit.valueAsNumber,avg=average.valueAsNumber;
   $('#estimate-linear').hidden=!linear;$('#estimate-editor').hidden=linear;$('#estimate-add').hidden=linear;
   const reverse=mode.value==='reverse';
@@ -188,13 +186,13 @@ function renderEstimate(){
     if(ordered){
       const finalRate=estimatePayment(ceiling,plan)/ceiling;
       plan.at(-1).factor=finalRate;
-      const percent=new Intl.NumberFormat(en?'en-US':'zh-TW',{style:'percent',maximumFractionDigits:4}).format(finalRate);
+      const percent=new Intl.NumberFormat('en-US',{style:'percent',maximumFractionDigits:4}).format(finalRate);
       const threshold='$'+ceiling.toLocaleString('en-US');
-      summary.textContent=ecText('滿 '+threshold+' 的綜合實付率：'+percent+'。超額部分自動按 '+percent+' 計費。','Blended rate at '+threshold+': '+percent+'. Automatic overage rate: '+percent+'.');
-    }else summary.textContent=ecText('請修正檔位以計算超額費率。','Correct the tiers to calculate the overage rate.');
+      summary.textContent='Blended rate at '+threshold+': '+percent+'. Automatic overage rate: '+percent+'.';
+    }else summary.textContent='Correct the tiers to calculate the overage rate.';
   }
   if(reverse){
-    $('#reverse-rule').textContent=ecText('未鎖定檔位從前一個鎖定費率（起始為原價）等幅遞減，最低為零。','Unlocked tiers decrease by equal steps from the preceding lock or list price, down to zero.');
+    $('#reverse-rule').textContent='Unlocked tiers decrease by equal steps from the preceding lock or list price, down to zero.';
     for(const box of document.querySelectorAll('#reverse-rows input[data-result]'))if(box.readOnly)box.value=solution?.tiers?Number((solution.tiers[Number(box.dataset.result)].factor*100).toFixed(6)):'';
   }
   const marginal=v=>1-2*(1-avg)*Math.min(v/goal,1);
@@ -204,17 +202,17 @@ function renderEstimate(){
   const max=Math.min(1e9,Math.max(1000,ordered?(linear?goal:(plan.at(-2)?.end??100000))*2:200000,valid?Math.ceil(spend):0));
   if(valid){slider.max=String(max);slider.value=amount.value}
   const ends=linear?[goal,Infinity]:plan.map(t=>t.end),tier=ends.findIndex(end=>spend<=end);
-  const rate=v=>en?Number((v*100).toFixed(2))+'%':Number((v*10).toFixed(3))+' 折';
+  const rate=v=>Number((v*100).toFixed(2))+'%';
   const money=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'});
-  $('#estimate-note').textContent=!ordered?(en?'Enter increasing positive ceilings below $1 billion and rates from 0 to 100%.':'門檻須遞增且介於 0 和 10 億之間，實付比例須為 0～100%。'):valid?(en?'Current tier '+(tier+1):'目前位於第 '+(tier+1)+' 檔'):(en?'Enter a valid spend amount.':'請輸入有效的消費金額。');
-  if(linear)$('#estimate-note').textContent=ordered?ecText('新增用量從原價線性降至 ','Marginal rate drops linearly from list price to ')+rate(marginal(goal))+ecText('，超過目標後沿用此比例。',' and stays there above target.'):ecText('目標金額須大於零且最多十億，綜合比例須在 0.5 至 1 之間。','Enter a positive target up to $1 billion and a blended rate between 0.5 and 1.');
-  if(reverse&&!ordered&&solution&&!solution.tiers)$('#estimate-note').textContent=ecText('此組鎖定條件可達範圍：','Achievable range with these locks: ')+rate(solution.min)+' – '+rate(solution.max);
+  $('#estimate-note').textContent=!ordered?('Enter increasing positive ceilings below $1 billion and rates from 0 to 100%.'):valid?('Current tier '+(tier+1)):('Enter a valid spend amount.');
+  if(linear)$('#estimate-note').textContent=ordered?'Marginal rate drops linearly from list price to '+rate(marginal(goal))+' and stays there above target.':'Enter a positive target up to $1 billion and a blended rate between 0.5 and 1.';
+  if(reverse&&!ordered&&solution&&!solution.tiers)$('#estimate-note').textContent='Achievable range with these locks: '+rate(solution.min)+' – '+rate(solution.max);
   const pay=payment(spend);
   const checkpoints=$('#estimate-checkpoints');checkpoints.replaceChildren();
   if(!linear&&ordered){
     const table=document.createElement('table');
     const heading=table.createTHead().insertRow();
-    for(const title of [ecText('用量門檻','Spend ceiling'),ecText('該檔實付率','Tier rate'),ecText('累計實付','Payment'),ecText('綜合實付率','Blended rate')]){
+    for(const title of ['Spend ceiling','Tier rate','Payment','Blended rate']){
       const th=document.createElement('th');th.textContent=title;heading.append(th);
     }
     const body=table.createTBody();let prior=0,total=0;
@@ -226,7 +224,7 @@ function renderEstimate(){
     }
     checkpoints.append(table);
   }
-  const metrics=[[ecText('新增用量實付比例','Marginal pay rate'),valid?rate(linear?marginal(spend):plan[tier].factor):'—'],[ecText('累計綜合折扣','Blended rate'),valid&&spend?rate(pay/spend):'—'],[ecText('累計實付','Estimated payment'),valid?money.format(pay):'—']];
+  const metrics=[['Marginal pay rate',valid?rate(linear?marginal(spend):plan[tier].factor):'—'],['Blended rate',valid&&spend?rate(pay/spend):'—'],['Estimated payment',valid?money.format(pay):'—']];
   $('#estimate-results').replaceChildren(...metrics.map(([name,value])=>{
     const card=document.createElement('div'),valueEl=document.createElement('strong');
     valueEl.textContent=value;card.append(name,valueEl);return card;
@@ -237,11 +235,11 @@ function renderEstimate(){
     const label=document.createElement('span');label.textContent=name;return label;
   }));
   const selection=document.createElement('strong');
-  selection.textContent=valid?ecText('目前用量 ','Selected spend ')+money.format(spend):'—';
+  selection.textContent=valid?'Selected spend '+money.format(spend):'—';
   caption.append(selection);
-  mode.options[0].textContent=ecText('按各檔折扣試算','Set tier rates');
-  mode.options[1].textContent=ecText('按目標實付率反推','Solve for target rate');
-  mode.options[2].textContent=ecText('無極階梯','Continuous');
+  mode.options[0].textContent='Set tier rates';
+  mode.options[1].textContent='Solve for target rate';
+  mode.options[2].textContent='Continuous';
   for(const [i,b] of Array.from($('#estimate-methods').children).entries()){
     b.textContent=mode.options[i].textContent;b.setAttribute('aria-pressed',String(b.value===mode.value));b.classList.toggle('primary',b.value===mode.value);
   }
@@ -258,7 +256,7 @@ function renderEstimate(){
     const stops=ends.slice(0,-1).map(v=>100*v/max);
     slider.style.appearance='none';slider.style.height='10px';slider.style.borderRadius='6px';
     slider.style.background='linear-gradient(to right,'+[0,...stops].map((start,i)=>(i%2?'#82c6b9':'#a6c8eb')+' '+start+'% '+(stops[i]??100)+'%').join(',')+')';
-    ends.slice(0,-1).forEach((v,i)=>{const b=document.createElement('button');b.type='button';b.textContent=(linear?ecText('目標','Target'):(en?'Tier '+(i+1):'第 '+(i+1)+' 檔')+' ≤')+' $'+v.toLocaleString();b.onclick=()=>{amount.value=String(v);renderEstimate()};marks.append(b)});
+    ends.slice(0,-1).forEach((v,i)=>{const b=document.createElement('button');b.type='button';b.textContent=(linear?'Target':('Tier '+(i+1))+' ≤')+' $'+v.toLocaleString();b.onclick=()=>{amount.value=String(v);renderEstimate()};marks.append(b)});
   }
   if(!valid)return;
   const rates=plan.map(t=>t.factor),schedule=plan;
@@ -309,7 +307,6 @@ slider.oninput=()=>{
   amount.value=String(estimateDragging&&Math.abs(raw-nearest)<=tol?nearest:raw);
   renderEstimate();
 };
-new MutationObserver(()=>{drawEstimateEditor();renderEstimate()}).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
 restoreEstimateView();
 if(typeof ResizeObserver!=='undefined')new ResizeObserver(renderEstimate).observe($('#estimate-chart'));
 `;

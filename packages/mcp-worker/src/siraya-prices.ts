@@ -22,11 +22,11 @@ export function conditionLabel(s: PriceScenario) {
 function billingBasis(u:PriceUnit) {
   const scale=Number(u.unitScale);
   const unit=u.unit.toLowerCase();
-  if (/^tokens?$/.test(unit) && scale===1000000) return '每百萬 token';
+  if (/^tokens?$/.test(unit) && scale===1000000) return 'Per million tokens';
   if (scale===1) {
-    if (/^(s|seconds?)$/.test(unit)) return '每秒';
-    if (/^images?$/.test(unit)) return '每張圖';
-    if (/^requests?$/.test(unit)) return '每次請求';
+    if (/^(s|seconds?)$/.test(unit)) return 'Per second';
+    if (/^images?$/.test(unit)) return 'Per image';
+    if (/^requests?$/.test(unit)) return 'Per request';
   }
   return '/ '+scale.toLocaleString('en-US')+' '+u.unit;
 }
