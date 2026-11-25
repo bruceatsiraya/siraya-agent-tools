@@ -22,7 +22,7 @@ export const estimatePanel = `<section id="estimate"><h2>價格試算</h2>
 </style><div class="ec-scope"><label><span data-ec="scope"></span><select id="estimate-scope"><option value="family">模型系列</option><option value="model">單模型</option><option value="all">總體消費</option></select></label>
 <label id="estimate-target-wrap"><span data-ec="target"></span><select id="estimate-target"></select></label></div><div class="ec-layout">
 <details open class="ec-box"><summary data-ec="tiers"></summary><select hidden id="estimate-mode"><option value="tiers"></option><option value="reverse"></option><option value="linear"></option></select>
-<div id="estimate-methods" style="display:flex;flex-wrap:wrap;gap:6px;margin:12px 0"><button type="button" value="tiers"></button><button type="button" value="reverse"></button><button type="button" value="linear"></button></div>
+<div id="estimate-methods" style="display:flex;flex-wrap:wrap;gap:6px;margin:12px 0"><button type="button" value="tiers">按各檔折扣試算</button><button type="button" value="reverse">按目標實付率反推</button><button type="button" value="linear">無極階梯</button></div>
 <div id="estimate-linear" hidden><label><span data-ec="threshold"></span><input type="number" id="estimate-limit" form="estimate-only" step="any"></label><label><span data-ec="average"></span><input type="number" id="estimate-average" form="estimate-only" step="any" min=".5" max="1"></label></div>
 <div id="estimate-reverse" hidden><label><span data-ec="targetrate"></span><input id="reverse-rate" form="estimate-only" type="number" step="any" min="0" max="100"></label><p id="reverse-rule"></p><div id="reverse-rows"></div><button type="button" id="reverse-add" data-ec="add"></button><label><span data-ec="tail"></span><input id="reverse-tail" type="number" step="any" form="estimate-only" placeholder="Auto"></label></div>
 <small id="estimate-save" role="status"></small><div id="estimate-editor"></div><button type="button" id="estimate-add" data-ec="add"></button></details>
@@ -41,12 +41,14 @@ export function estimatePayment(base: number, tiers: {end:number;factor:number}[
   return payment;
 }
 
-export function solveTarget(rows: {end:number;factor:number;locked:boolean}[], target:number) {
+export const estimateScript = `
+const estimatePayment = ${estimatePayment.toString()};
+function solveTarget(rows, target) {
   const goal=rows.at(-1)?.end ?? 0;
   if(!goal || !Number.isFinite(target) || target<0 || target>1 ||
     rows.some((r,i)=>!Number.isFinite(r.end)||r.end<=(rows[i-1]?.end??0)||r.end>=1e9||
       (r.locked&&(!Number.isFinite(r.factor)||r.factor<0||r.factor>1))))return null;
-  function schedule(step:number){
+  function schedule(step){
     let anchor=1, distance=0;
     return rows.map(row=>{
       if(row.locked){anchor=row.factor;distance=0}
@@ -54,7 +56,7 @@ export function solveTarget(rows: {end:number;factor:number;locked:boolean}[], t
       return {end:row.end,factor:row.locked?row.factor:Math.max(0,anchor-distance*step)};
     });
   }
-  const blended=(step:number)=>estimatePayment(goal,schedule(step))/goal;
+  const blended=step=>estimatePayment(goal,schedule(step))/goal;
   const min=blended(1),max=blended(0);
   if(target<min-1e-12||target>max+1e-12)return {min,max,tiers:null};
   let lo=0,hi=1;
@@ -62,9 +64,6 @@ export function solveTarget(rows: {end:number;factor:number;locked:boolean}[], t
   return {min,max,tiers:schedule((lo+hi)/2)};
 }
 
-export const estimateScript = `
-${estimatePayment.toString()}
-${solveTarget.toString()}
 const amount=$('#estimate-amount'),slider=$('#estimate-slider');
 const estimateRates={Claude:[.9,.74,.82],GPT:[.8,.64,.72],Gemini:[.85,.71,.78]};
 const estimateScope=$('#estimate-scope'),estimateTarget=$('#estimate-target');
