@@ -19,7 +19,7 @@ export function conditionLabel(s: PriceScenario) {
   return s.conditions.map(c=>[c.attribute,ops[c.operator]??c.operator,c.value].join(' ')).join(' · ');
 }
 
-function billingBasis(u:PriceUnit) {
+export function billingBasis(u:PriceUnit) {
   const scale=Number(u.unitScale);
   const unit=u.unit.toLowerCase();
   if (/^tokens?$/.test(unit) && scale===1000000) return 'Per million tokens';
@@ -31,7 +31,7 @@ function billingBasis(u:PriceUnit) {
   return '/ '+scale.toLocaleString('en-US')+' '+u.unit;
 }
 
-export function priceDetails(price: CatalogPrice | undefined, escape:(v:unknown)=>string) {
+export function priceDetails(price: CatalogPrice | undefined, escape:(v:unknown)=>string, discounted = false) {
   if(!price?.scenarios.length)return '—';
   return price.scenarios.map(s=>{
     const groups = new Map<string,PriceUnit[]>();
@@ -44,7 +44,7 @@ export function priceDetails(price: CatalogPrice | undefined, escape:(v:unknown)
     return '<div class="catalog-price" title="'+escape(price.checkedAt)+'" style="text-align:left;padding:4px 0">'+
       (title?'<strong>'+escape(title)+'</strong>':'')+
       Array.from(groups,([basis,units])=>'<div style="color:#116d63;font-weight:650">'+escape(basis)+'</div>'+
-        units.map(u=>'<div style="display:flex;justify-content:space-between;gap:1rem"><span>'+escape(u.billingUnit)+'</span><b style="font-variant-numeric:tabular-nums">'+escape(s.currency)+' '+escape(u.salePrice.replace(/(\.\d*?[1-9])0+$|\.0+$/,'$1'))+'</b></div>').join('')
+        units.map(u=>'<div style="display:flex;justify-content:space-between;gap:1rem"><span>'+escape(u.billingUnit)+'</span><b style="font-variant-numeric:tabular-nums">'+escape(s.currency)+' '+(discounted ? '<span data-rate="'+escape(u.salePrice)+'">—</span>' : escape(u.salePrice.replace(/(\.\d*?[1-9])0+$|\.0+$/,'$1')))+'</b></div>').join('')
       ).join('')+'</div>';
   }).join('');
 }

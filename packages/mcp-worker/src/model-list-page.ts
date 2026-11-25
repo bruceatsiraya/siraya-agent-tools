@@ -30,9 +30,9 @@ export function modelListPage(rows: Row[], generatedAt: string, live: boolean, a
         : typeof value === "number" && index >= 8 && index <= 12 ? value.toLocaleString("en-US") : value;
       if (name === "tps" && benchmark) return `<td><details><summary>${html(formatted ?? "—")}</summary><small>${html(benchmark)}</small></details></td>`;
       return `<td${index === 2 || index === 3 ? " data-no-translate" : ""}>${html(formatted ?? "—")}</td>`;
-    }).join("");
+    });
     const price = priceDetails(officialPrice,html);
-    return `<tr data-id="${html(cells[3])}" data-category="${html(category)}" data-family="${html(cells[1])}">${values}<td>${price}</td><td><button type="button" data-save>Save</button></td></tr>`;
+    return `<tr data-id="${html(cells[3])}" data-category="${html(category)}" data-family="${html(cells[1])}">${values.slice(0,4).join("")}<td>${price}</td>${values[4]}<td class="net">${priceDetails(officialPrice,html,true)}</td>${values.slice(5).join("")}<td><button type="button" data-save>Save</button></td></tr>`;
   }).join("");
   const families = [...new Set(rows.map(row => String(row.cells[1])))].sort();
   const categories = [...new Set(rows.map(row => row.category))].sort();
@@ -51,7 +51,10 @@ export function modelListPage(rows: Row[], generatedAt: string, live: boolean, a
   td:nth-child(4){font-family:ui-monospace,monospace;color:#274469}td input{width:100px;padding:4px}
   tbody tr:hover{background:#f6faff}summary{cursor:pointer}details small{white-space:pre-line;color:#455b75}
   #status{min-height:24px}#status[data-error]{color:#a32d25}
-  ${siteStyles}</style></head><body class="site-app">${siteSidebar(admin ? "/model-list?manage=1" : "/model-list")}
+  ${siteStyles}
+  body.site-app main#site-main{max-width:none;padding-inline:clamp(12px,2vw,32px)}
+  .table-region{max-height:73vh}td{vertical-align:top;padding:8px}td:nth-child(3),td:nth-child(4){white-space:normal;min-width:10em;max-width:18em;overflow-wrap:anywhere}.net{background:#eff9f5}td input[name=discount]{width:6em}.catalog-price{font-size:13px}.catalog-price+.catalog-price{border-top:1px solid #dde6ee}
+  </style></head><body class="site-app">${siteSidebar(admin ? "/model-list?manage=1" : "/model-list")}
   <main id="site-main" data-shared-discounts="${signedIn}"><h1>Model List</h1><p>${live ? "Live SIRAYA catalog checked" : "Last available SIRAYA catalog"} · ${html(generatedAt)}</p>
   <div class="toolbar"><input id="search" type="search" placeholder="Search model, ID, or family" aria-label="Search models">
   <select id="category" aria-label="Category"><option value="">All categories</option>
@@ -68,11 +71,11 @@ export function modelListPage(rows: Row[], generatedAt: string, live: boolean, a
     <button type="submit">Apply to family</button>
   </form>` : ""}<p id="status" role="status"></p>
   <div class="table-region" role="region" aria-label="Model specifications" tabindex="0"><table><thead><tr>
-  ${headers.map(name => {
+  ${[...headers.slice(0,4),"Siraya list price",headers[4],"Discounted price",...headers.slice(5)].map(name => {
     const note = name === "RPM" || name === "TPM" ? referenceNotes[1]
       : name === "TTFT (s)" || name === "TPS" ? referenceNotes[0] : "";
     return `<th scope="col"${note ? ` title="${html(note)}" aria-describedby="metric-notes"` : ""}>${html(name)}</th>`;
-  }).join("")}<th scope="col">Siraya list price</th><th scope="col">Actions</th></tr></thead>
+  }).join("")}<th scope="col">Actions</th></tr></thead>
   <tbody>${body}</tbody></table></div>
   <p id="metric-notes">${referenceNotes.map(html).join(" ")}</p>
   <p>Weekly benchmark snapshots. Infron uses the 30-day median. OpenRouter uses the median of endpoint p50s over the preceding 30 minutes. ${admin ? "Open Sources to compare weekly figures." : "Expand TPS to compare sources."}</p>
@@ -160,6 +163,17 @@ if (!sharedDiscounts) {
     }
   });
 }
+function updatePrice(row) {
+  const input = row.querySelector('input[name="discount"]');
+  for (const amount of row.querySelectorAll('[data-rate]')) {
+    amount.textContent = input.validity.valid && input.value !== ""
+      ? String(Number((Number(amount.dataset.rate) * input.valueAsNumber).toPrecision(15))) : "—";
+  }
+}
+rows.forEach(updatePrice);
+document.querySelector("tbody").addEventListener("input", event => {
+  if (event.target.name === "discount") updatePrice(event.target.closest("tr"));
+});
 let saving = false;
 
 async function saveRows(targetRows) {
@@ -223,7 +237,10 @@ if (familyDiscount) {
     if (saving) return;
     const { family, factor } = familyDiscount.elements;
     const matches = rows.filter(row => row.dataset.family === family.value);
-    for (const row of matches) row.querySelector('input[name="discount"]').value = factor.value;
+    for (const row of matches) {
+      row.querySelector('input[name="discount"]').value = factor.value;
+      updatePrice(row);
+    }
     feedback("Filled " + matches.length + " " + family.value + " models. Use Save all changes to confirm.");
   });
 }
