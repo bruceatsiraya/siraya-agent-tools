@@ -12,6 +12,11 @@ on:
       - "tsconfig.base.json"
       - ".github/workflows/deploy-cloudflare.yml"
   workflow_dispatch:
+    inputs:
+      reset_accounts:
+        description: One-time account reset retaining bruce
+        type: boolean
+        default: false
 
 concurrency:
   group: siraya-mcp-production
@@ -22,6 +27,7 @@ permissions:
 
 jobs:
   deploy:
+    if: ${{ github.event_name != 'workflow_dispatch' || !inputs.reset_accounts }}
     name: Typecheck and deploy
     runs-on: ubuntu-latest
     environment: production
@@ -65,3 +71,27 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy --config packages/mcp-worker/wrangler.toml
+  reset:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.reset_accounts
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Reset accounts and verify
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          query() {
+            npx --yes wrangler@4.166.0 d1 execute siraya-model-metadata --remote --config packages/mcp-worker/wrangler.toml --json --command "$1"
+          }
+          query "SELECT id FROM admin_users WHERE username = 'bruce'" | jq -e '.[0].results | length == 1' >/dev/null
+          query "UPDATE admin_users SET active = 1, pricing_role = 'product', can_manage_accounts = 1, failed_attempts = 0, locked_until = NULL, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE username = 'bruce'" >/dev/null
+          query "DELETE FROM admin_users WHERE username <> 'bruce' AND EXISTS (SELECT 1 FROM admin_users WHERE username = 'bruce' AND active = 1 AND pricing_role = 'product' AND can_manage_accounts = 1)" >/dev/null
+          query "DELETE FROM admin_sessions WHERE EXISTS (SELECT 1 FROM admin_users WHERE username = 'bruce' AND active = 1 AND pricing_role = 'product' AND can_manage_accounts = 1)" >/dev/null
+          query "SELECT username, active, pricing_role, can_manage_accounts, (SELECT COUNT(*) FROM admin_sessions) AS session_count FROM admin_users" | jq -e '.[0].results | select(length == 1 and .[0].username == "bruce" and .[0].active == 1 and .[0].pricing_role == "product" and .[0].can_manage_accounts == 1 and .[0].session_count == 0)'
