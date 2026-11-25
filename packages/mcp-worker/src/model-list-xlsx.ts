@@ -70,30 +70,36 @@ export function exportModelList(rows: Cell[][], catalog:{cells:Cell[];officialPr
   const rel = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
   const pkg = "http://schemas.openxmlformats.org/package/2006/relationships";
   const banner = ["SIRAYA Model Router | Model List", ...referenceNotes,
-    "Discount Factor is a multiplier. For example, 0.88 means 88% of list price."];
+    "One row per billing item and scenario. Edit the first discount factor for each model. A factor of 0.88 means 88% of list price."];
   const prices = new Map(catalog.map(row => [row.cells[3], row.officialPrice]));
   const priceRows: Cell[][] = [["Model ID","Scenario","Conditions","Billing item","Currency","List price","Discount Factor","Discounted price","Per quantity","Unit","Synced (UTC)"]];
   const detailModelRows: number[] = [];
-  const columnsHeader = [...headers.slice(0,4), "Rate shown (all rates on List Prices)", "List price", headers[4], "Discounted price", ...headers.slice(5)];
-  const summaryRows = rows.map((cells, index) => {
+  const columnsHeader = [...headers.slice(0,4), "Billing item", "List price", headers[4], "Discounted price",
+    "Currency", "Billing basis", "Scenario", "Conditions", ...headers.slice(5)];
+  const summaryRows: Cell[][] = [];
+  const factorSources: number[] = [];
+  for (const cells of rows) {
     const price = prices.get(cells[3]);
     const factor = cells[4];
-    let basis: string | null = null;
-    let list: number | null = null;
+    const firstRow = summaryRows.length + 6;
     for (const scenario of price?.scenarios ?? []) {
+      const conditions = conditionLabel(scenario);
       for (const unit of scenario.units) {
         const rate = Number(unit.salePrice);
-        if (basis === null) {
-          basis = [scenario.name, conditionLabel(scenario), unit.billingUnit, scenario.currency, billingBasis(unit)].filter(Boolean).join(" · ");
-          list = rate;
-        }
-        detailModelRows.push(index + 6);
-        priceRows.push([cells[3], scenario.name, conditionLabel(scenario), unit.billingUnit, scenario.currency, rate, factor,
-          typeof factor === "number" ? rate * factor : null, Number(unit.unitScale), unit.unit, price!.checkedAt]);
+        const net = typeof factor === "number" ? rate * factor : null;
+        detailModelRows.push(firstRow);
+        factorSources.push(firstRow);
+        priceRows.push([cells[3], scenario.name, conditions, unit.billingUnit, scenario.currency, rate, factor,
+          net, Number(unit.unitScale), unit.unit, price!.checkedAt]);
+        summaryRows.push([...cells.slice(0,4), unit.billingUnit, rate, factor, net,
+          scenario.currency, billingBasis(unit), scenario.name, conditions, ...cells.slice(5)]);
       }
     }
-    return [...cells.slice(0,4), basis, list, factor, list !== null && typeof factor === "number" ? list * factor : null, ...cells.slice(5)];
-  });
+    if (summaryRows.length + 6 === firstRow) {
+      factorSources.push(firstRow);
+      summaryRows.push([...cells.slice(0,4), "Price unavailable", null, factor, null, null, null, null, null, ...cells.slice(5)]);
+    }
+  }
   function formulaCell(formula: string, cached: Cell, style: number) {
     return '<c s="'+style+'"'+(cached === null ? ' t="str"' : '')+'><f>'+xml(formula)+'</f><v>'+(cached ?? '')+'</v></c>';
   }
@@ -108,6 +114,10 @@ export function exportModelList(rows: Cell[][], catalog:{cells:Cell[];officialPr
   const body = sheetRows.map((row, ri) => {
     const cells = row.map((value, ci) => {
       const ref = String.fromCharCode(65 + ci) + (ri + 1);
+      if (ri >= 5 && ci === 6 && factorSources[ri-5] !== ri+1) {
+        const source = "$G$"+factorSources[ri-5];
+        return formulaCell('IF(ISNUMBER('+source+'),'+source+',"")', value, 4 + (ri % 2) * 3);
+      }
       if (ri >= 5 && ci === 7) {
         const n = ri + 1;
         return formulaCell('IF(COUNT(F'+n+':G'+n+')=2,F'+n+'*G'+n+',"")', value, 4 + (ri % 2) * 3);
@@ -118,7 +128,7 @@ export function exportModelList(rows: Cell[][], catalog:{cells:Cell[];officialPr
       return typeof value === "number" ? `<c r="${ref}" s="${style}"><v>${value}</v></c>` :
         `<c r="${ref}" s="${style}" t="inlineStr"><is><t xml:space="preserve">${xml(value)}</t></is></c>`;
     }).join("");
-    return `<row r="${ri + 1}" ht="${ri === 0 ? 34 : ri === 4 ? 25 : 20}" customHeight="1">${cells}</row>`;
+    return `<row r="${ri + 1}" ht="${ri === 0 ? 34 : ri === 4 ? 32 : 20}" customHeight="${ri < 5 ? 1 : 0}">${cells}</row>`;
   }).join("");
   const fonts = [
     '<font><sz val="11"/><name val="Calibri"/><color rgb="FF17263C"/></font>',
@@ -129,13 +139,13 @@ export function exportModelList(rows: Cell[][], catalog:{cells:Cell[];officialPr
     ...["112C4B", "EAF2FB", "23547F", "F4F8FC"].map(color =>
       `<fill><patternFill patternType="solid"><fgColor rgb="FF${color}"/><bgColor indexed="64"/></patternFill></fill>`)];
   const xf = (font: number, fill: number, number: number) =>
-    `<xf numFmtId="${number}" fontId="${font}" fillId="${fill}" borderId="0" xfId="0" applyFont="1" applyFill="1" applyNumberFormat="1" applyAlignment="1"><alignment vertical="center"/></xf>`;
+    `<xf numFmtId="${number}" fontId="${font}" fillId="${fill}" borderId="0" xfId="0" applyFont="1" applyFill="1" applyNumberFormat="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>`;
   const styles = [xf(0, 0, 0), xf(1, 2, 0), xf(0, 3, 0), xf(2, 4, 0),
     ...[0, 5].flatMap(fill => [xf(0, fill, 0), xf(0, fill, 3), xf(0, fill, 164)])];
-  const widths = [7, 17, 32, 43, 65, 16, 18, 20, 15, 24, 22, 18, 16, 16, 16, 18, 13, 13];
+  const widths = [7, 17, 30, 38, 24, 16, 18, 20, 14, 22, 34, 58, 15, 24, 22, 18, 16, 16, 16, 18, 13, 13];
   const columns = widths.map((width, index) =>
     `<col min="${index + 1}" max="${index + 1}" width="${width}" customWidth="1"/>`).join("");
-  const merges = banner.map((_, index) => `<mergeCell ref="A${index + 1}:R${index + 1}"/>`).join("");
+  const merges = banner.map((_, index) => `<mergeCell ref="A${index + 1}:V${index + 1}"/>`).join("");
   return new Response(zip({
     "[Content_Types].xml": '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>',
     "_rels/.rels": `<Relationships xmlns="${pkg}"><Relationship Id="rId1" Type="${rel}/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
@@ -143,7 +153,7 @@ export function exportModelList(rows: Cell[][], catalog:{cells:Cell[];officialPr
     "xl/_rels/workbook.xml.rels": `<Relationships xmlns="${pkg}"><Relationship Id="rId1" Type="${rel}/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId3" Type="${rel}/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId2" Type="${rel}/styles" Target="styles.xml"/></Relationships>`,
     "xl/styles.xml": `<styleSheet xmlns="${ns}"><numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00##"/></numFmts><fonts count="${fonts.length}">${fonts.join("")}</fonts><fills count="${fills.length}">${fills.join("")}</fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${styles.length}">${styles.join("")}</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`,
     "xl/worksheets/sheet2.xml": `<worksheet xmlns="${ns}"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="4" width="35" customWidth="1"/><col min="5" max="10" width="20" customWidth="1"/><col min="11" max="11" width="28" customWidth="1"/></cols><sheetData>${pricingBody}</sheetData><autoFilter ref="A1:K${priceRows.length}"/></worksheet>`,
-    "xl/worksheets/sheet1.xml": `<worksheet xmlns="${ns}"><sheetViews><sheetView showGridLines="0" workbookViewId="0"><pane ySplit="5" topLeftCell="A6" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${columns}</cols><sheetData>${body}</sheetData><autoFilter ref="A5:R${rows.length + 5}"/><mergeCells count="${banner.length}">${merges}</mergeCells></worksheet>`
+    "xl/worksheets/sheet1.xml": `<worksheet xmlns="${ns}"><sheetViews><sheetView showGridLines="0" workbookViewId="0"><pane ySplit="5" topLeftCell="A6" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${columns}</cols><sheetData>${body}</sheetData><autoFilter ref="A5:V${summaryRows.length + 5}"/><mergeCells count="${banner.length}">${merges}</mergeCells></worksheet>`
   }), {
     headers: {
       "content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
