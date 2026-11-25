@@ -1,6 +1,9 @@
 name: Reset production accounts
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/workflows/reset-production-accounts.yml"]
 
 concurrency:
   group: siraya-mcp-production
@@ -11,7 +14,7 @@ permissions:
 
 jobs:
   reset:
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
     steps:
