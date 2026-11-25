@@ -10,6 +10,14 @@ export const estimatePanel = `<section id="estimate"><h2>價格試算</h2>
 #estimate-chart{display:block;width:100%;height:auto}#estimate [hidden]{display:none}
 #estimate-results{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:8px}#estimate-results div{background:white;border:1px solid #d6e0ed;border-radius:8px;padding:10px;overflow-wrap:anywhere}#estimate-results strong{display:block;color:#116d63;font-size:1.2rem}
 @media(max-width:800px){#estimate .ec-layout{grid-template-columns:1fr}}
+#estimate .ec-figure{margin:16px 0 0;background:white;border:1px solid #d6e0ed;border-radius:10px;padding:12px;min-width:0}
+#estimate-legend{display:flex;gap:8px 18px;align-items:center;flex-wrap:wrap;color:#42566c;font-size:13px}
+#estimate-legend span{display:inline-flex;align-items:center;gap:6px}
+#estimate-legend span:before{content:"";width:20px;border-top:3px solid #357bc0}
+#estimate-legend span:nth-child(2):before{border-color:#116d63;border-top-style:dashed}
+#estimate-legend strong{margin-inline-start:auto;font-variant-numeric:tabular-nums}
+#estimate-results strong{font-variant-numeric:tabular-nums}
+#estimate-results div:first-child strong{color:#357bc0}
 </style><div class="ec-scope"><label><span data-ec="scope"></span><select id="estimate-scope"><option value="family">模型系列</option><option value="model">單模型</option><option value="all">總體消費</option></select></label>
 <label id="estimate-target-wrap"><span data-ec="target"></span><select id="estimate-target"></select></label></div><div class="ec-layout">
 <details open class="ec-box"><summary data-ec="tiers"></summary><label><span data-ec="mode"></span><select id="estimate-mode"><option value="tiers">分段階梯 / Tiers</option><option value="linear">無極階梯 / Continuous</option></select></label>
@@ -19,7 +27,7 @@ export const estimatePanel = `<section id="estimate"><h2>價格試算</h2>
 <input id="estimate-slider" type="range" min="0" max="200000" step=".01" value="75000" aria-label="Monthly list-price spend (USD)">
 <div id="estimate-marks" style="display:flex;flex-wrap:wrap;gap:.5rem"></div><p id="estimate-note"></p><div id="estimate-results"></div>
 
-<p id="estimate-legend"></p><canvas id="estimate-chart" width="760" height="220" role="img"></canvas></div></div></section>`;
+<figure class="ec-figure"><figcaption id="estimate-legend"></figcaption><canvas id="estimate-chart" width="760" height="220" role="img"></canvas></figure></div></div></section>`;
 
 export function estimatePayment(base: number, tiers: {end:number;factor:number}[]) {
   let start=0, payment=0;
@@ -129,37 +137,64 @@ function renderEstimate(){
     const card=document.createElement('div'),valueEl=document.createElement('strong');
     valueEl.textContent=value;card.append(name,valueEl);return card;
   }));
-  const legend=en?'Blue · Current tier rate / Green · Blended rate':'藍線 · 當前檔折扣 ／ 綠線 · 累計綜合折扣';
-  $('#estimate-legend').textContent=legend;
+  const legend=metrics.slice(0,2).map(([name])=>name).join(' / ');
+  const caption=$('#estimate-legend');
+  caption.replaceChildren(...metrics.slice(0,2).map(([name])=>{
+    const label=document.createElement('span');label.textContent=name;return label;
+  }));
+  const selection=document.createElement('strong');
+  selection.textContent=valid?ecText('目前用量 ','Selected spend ')+money.format(spend):'—';
+  caption.append(selection);
+  mode.options[0].textContent=ecText('分段階梯','Pricing tiers');
+  mode.options[1].textContent=ecText('無極階梯','Continuous');
   const canvas=$('#estimate-chart'),ctx=canvas.getContext('2d');
   canvas.setAttribute('aria-label',estimateTarget.value+' · '+legend);
-  ctx.clearRect(0,0,760,220);
+  const width=Math.max(240,Math.round(canvas.getBoundingClientRect().width)),height=228;
+  const density=window.devicePixelRatio||1;
+  canvas.style.height=height+'px';
+  canvas.width=Math.round(width*density);canvas.height=Math.round(height*density);
+  ctx.setTransform(density,0,0,density,0,0);
   const marks=$('#estimate-marks');marks.replaceChildren();
   slider.style.background='';
   if(ordered){
     const stops=ends.slice(0,-1).map(v=>100*v/max);
     slider.style.appearance='none';slider.style.height='10px';slider.style.borderRadius='6px';
     slider.style.background='linear-gradient(to right,'+[0,...stops].map((start,i)=>(i%2?'#82c6b9':'#a6c8eb')+' '+start+'% '+(stops[i]??100)+'%').join(',')+')';
-    ends.slice(0,-1).forEach((v,i)=>{const b=document.createElement('button');b.type='button';b.textContent=(en?'Tier '+(i+1):'第 '+(i+1)+' 檔')+' ≤ $'+v.toLocaleString();b.onclick=()=>{amount.value=String(v);renderEstimate()};marks.append(b)});
+    ends.slice(0,-1).forEach((v,i)=>{const b=document.createElement('button');b.type='button';b.textContent=(linear?ecText('目標','Target'):(en?'Tier '+(i+1):'第 '+(i+1)+' 檔')+' ≤')+' $'+v.toLocaleString();b.onclick=()=>{amount.value=String(v);renderEstimate()};marks.append(b)});
   }
   if(!valid)return;
   const rates=estimatePlan.map(t=>t.factor),schedule=estimatePlan;
-  const x=v=>48+655*v/max,y=v=>180-v*155;
-  ctx.font='13px system-ui';ctx.fillStyle='#52647b';
-  for(const f of [0,.25,.5,.75,1])ctx.fillText(rate(f),0,y(f)+4);
-  for(const v of [0,max])ctx.fillText('$'+v.toLocaleString('en-US'),x(v)-12,208);
+  const x=v=>48+(width-66)*v/max,y=v=>190-v*166;
+  ctx.font='12px system-ui';ctx.fillStyle='#52647b';ctx.textAlign='right';
+  for(const f of [0,.25,.5,.75,1]){
+    ctx.fillText(rate(f),40,y(f)+4);ctx.strokeStyle='#dce4ed';
+    ctx.beginPath();ctx.moveTo(x(0),y(f));ctx.lineTo(x(max),y(f));ctx.stroke();
+  }
+  const axis=v=>'$'+v.toLocaleString('en-US');
+  ctx.textAlign='left';ctx.fillText(axis(0),x(0),215);
+  ctx.textAlign='right';ctx.fillText(axis(max),x(max),215);
+  const rightEdge=x(max)-ctx.measureText(axis(max)).width-8;
+  let labelEdge=x(0)+ctx.measureText(axis(0)).width+8;
+  ctx.textAlign='center';ctx.setLineDash([4,4]);
+  for(const end of ends.slice(0,-1)){
+    const pos=x(end),half=ctx.measureText(axis(end)).width/2;
+    if(pos-half<labelEdge||pos+half>rightEdge)continue;
+    ctx.fillText(axis(end),pos,215);labelEdge=pos+half+8;
+    ctx.beginPath();ctx.moveTo(pos,y(1));ctx.lineTo(pos,y(0));ctx.stroke();
+  }
+  ctx.strokeStyle='#9baec0';ctx.beginPath();ctx.moveTo(x(spend),y(1));ctx.lineTo(x(spend),y(0));ctx.stroke();ctx.setLineDash([]);
   ctx.lineWidth=3;ctx.strokeStyle='#357bc0';ctx.beginPath();ctx.moveTo(x(0),y(linear?1:rates[0]));
   if(linear){ctx.lineTo(x(goal),y(marginal(goal)));ctx.lineTo(x(max),y(marginal(goal)))}else schedule.forEach(({end,factor},i)=>{ctx.lineTo(x(Math.min(end,max)),y(factor));if(i<schedule.length-1)ctx.lineTo(x(end),y(rates[i+1]))});
   ctx.stroke();
   const blend=v=>v?payment(v)/v:(linear?1:rates[0]);
-  ctx.strokeStyle='#116d63';ctx.beginPath();ctx.moveTo(x(0),y(rates[0]));
+  ctx.strokeStyle='#116d63';ctx.setLineDash([7,4]);ctx.beginPath();ctx.moveTo(x(0),y(blend(0)));
   for(const [i,end] of [...ends.slice(0,-1),max].entries()){
     const start=i?ends[i-1]:0;
     for(let j=1;j<=50;j++){const v=start+(end-start)*j/50;ctx.lineTo(x(v),y(blend(v)))}
   }
   ctx.stroke();
   for(const [f,color] of [[linear?marginal(spend):rates[tier],'#357bc0'],[blend(spend),'#116d63']]){
-    ctx.fillStyle=color;ctx.beginPath();ctx.arc(x(spend),y(f),4,0,Math.PI*2);ctx.fill();
+    ctx.setLineDash([]);ctx.fillStyle=color;ctx.beginPath();ctx.arc(x(spend),y(f),color==='#357bc0'?6:3,0,Math.PI*2);ctx.fill();ctx.lineWidth=1.5;ctx.strokeStyle='white';ctx.stroke();
   }
 }
 mode.onchange=editEstimate;limit.oninput=editEstimate;average.oninput=editEstimate;
@@ -177,4 +212,5 @@ slider.oninput=()=>{
 };
 new MutationObserver(()=>{drawEstimateEditor();renderEstimate()}).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
 restoreEstimateView();
+if(typeof ResizeObserver!=='undefined')new ResizeObserver(renderEstimate).observe($('#estimate-chart'));
 `;
