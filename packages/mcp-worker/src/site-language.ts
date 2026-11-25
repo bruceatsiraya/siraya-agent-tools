@@ -24,28 +24,21 @@ export const languagePairs: Array<[string, string]> = [
 
 export const siteLanguageScript = `(()=>{
 const pairs=${JSON.stringify(languagePairs).replace(/</g,'\\u003c')};
-const zh=new Map(pairs.map(([z,e])=>[e,z]));const en=new Map(pairs.map(([z,e])=>[z,e]));
-let language='zh';try{language=localStorage.getItem('siraya:language')==='en'?'en':'zh'}catch{}
+const en=new Map(pairs);
 const original=new WeakMap();const attributes=new WeakMap();const sourceTitle=document.title;
-function translate(value){const trimmed=value.trim();const dict=language==='en'?en:zh;let result=dict.get(trimmed);if(result===undefined){const other=language==='en'?zh:en;if(other.has(trimmed))return value;
-const rules=language==='en'?[
+function translate(value){const trimmed=value.trim();let result=en.get(trimmed);if(result===undefined){
+const rules=[
 [/^(模型自訂|Vendor 折扣|目錄預設) · 下限 ([0-9.]+)( · 待特批)?$/,null],
 [/^顯示 (\\d+) [^0-9] (\\d+)$/,'Showing $1 / $2'],[/^移除 (.*) 折扣$/,'Remove $1 discount'],[/^已選 (\\d+) 個模型$/,'$1 models selected'],[/^登入帳號：(.*)$/,'Signed in as: $1'],[/^報價日期 (.*?) · 有效至 (.*?) UTC$/,'Quoted $1 · Valid until $2 UTC'],[/^選取 (.*)$/,'Select $1'],[/^(.*) 折扣$/,'$1 discount'],[/^(.*) 專屬報價$/,'$1 — Customer quote']
-]:[
-[/^(\\d+) models$/,'$1 個模型'],[/^(\\d+) models selected$/,'已選 $1 個模型'],[/^Signed in as (.*)$/,'登入帳號：$1'],[/^Signed in as: (.*)$/,'登入帳號：$1'],[/^Live SIRAYA catalog checked · (.*)$/,'已檢查即時 SIRAYA 目錄 · $1'],[/^Last available SIRAYA catalog · (.*)$/,'最近可用的 SIRAYA 目錄 · $1'],[/^(\\d+) of (\\d+) official pricing sources checked$/,'已檢查 $1／$2 個官方定價來源'],[/^(\\d+) exact upstream model prices matched$/,'已匹配 $1 個上游模型價格'],[/^Saved (\\d+) models?([.]| in this browser[.])$/,'已儲存 $1 個模型。'],[/^Could not (.*)$/,'操作失敗：$1']
 ];for(const [pattern,replacement] of rules){if(pattern.test(trimmed)){result=replacement===null?trimmed.split(' · ').map((part,i)=>i===1?part.replace('下限 ','Floor '):en.get(part)??part).join(' · '):trimmed.replace(pattern,replacement);break}}}
-if(result===undefined&&language==='zh'){for(const [key,z] of zh){if(key.toLowerCase()===trimmed.toLowerCase()){result=z;break}}}
-if(result===undefined){let composed=value;const entries=[...dict].filter(([key])=>key.length>20).sort((a,b)=>b[0].length-a[0].length);for(const [key,text] of entries)composed=composed.split(key).join(text);return composed}
+if(result===undefined){let composed=value;const entries=[...en].filter(([key])=>key.length>20).sort((a,b)=>b[0].length-a[0].length);for(const [key,text] of entries)composed=composed.split(key).join(text);return composed}
 return value.replace(trimmed,result)}
-function skip(el){return !!el.closest('script,style,pre,code,[data-no-translate],.site-language,.site-icon,.site-brand,.model-name,.vendor,.provider-mark')}
-function render(){observer.disconnect();const lang=language==='en'?'en':'zh-Hant';if(document.documentElement.lang!==lang)document.documentElement.lang=lang;document.title=sourceTitle.split(' | ').map(translate).join(' | ');
+function skip(el){return !!el.closest('script,style,pre,code,[data-no-translate],.site-icon,.site-brand,.model-name,.vendor,.provider-mark')}
+function render(){observer.disconnect();document.documentElement.lang='en';document.title=sourceTitle.split(' | ').map(translate).join(' | ');
 document.querySelectorAll('option:not([value])').forEach(o=>o.setAttribute('value',o.value));
 const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let n;while(n=walker.nextNode()){if(!n.parentElement||skip(n.parentElement))continue;const previous=original.get(n);const source=previous&&n.nodeValue===previous.last?previous.source:n.nodeValue;const last=translate(source);original.set(n,{source,last});if(n.nodeValue!==last)n.nodeValue=last}
 for(const el of document.querySelectorAll('[placeholder],[aria-label],[title]')){if(skip(el))continue;let state=attributes.get(el)||{};for(const key of ['placeholder','aria-label','title']){if(!el.hasAttribute(key))continue;const value=el.getAttribute(key);const old=state[key];const source=old&&value===old.last?old.source:value;const last=translate(source);state[key]={source,last};if(value!==last)el.setAttribute(key,last)}attributes.set(el,state)}
-document.querySelectorAll('[data-site-lang]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.siteLang===language)));observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['placeholder','aria-label','title']})}
+observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['placeholder','aria-label','title']})}
 const observer=new MutationObserver(()=>render());
-const control=document.createElement('div');control.className='site-language';control.setAttribute('role','group');control.setAttribute('aria-label','Language / 語言');control.innerHTML='<button type="button" data-site-lang="zh" lang="zh-Hant">中文</button><button type="button" data-site-lang="en" lang="en">English</button>';
-const sidebar=document.querySelector('.site-sidebar');if(sidebar)sidebar.querySelector('.site-brand').after(control);else{control.classList.add('site-language-public');document.body.prepend(control)}
-control.addEventListener('click',e=>{const b=e.target.closest('[data-site-lang]');if(!b)return;language=b.dataset.siteLang;try{localStorage.setItem('siraya:language',language)}catch{}render()});
-window.addEventListener('storage',e=>{if(e.key==='siraya:language'){language=e.newValue==='en'?'en':'zh';render()}});render();
+render();
 })();`;
