@@ -32,7 +32,7 @@ export function modelListPage(rows: Row[], generatedAt: string, live: boolean, a
       return `<td${index === 2 || index === 3 ? " data-no-translate" : ""}>${html(formatted ?? "—")}</td>`;
     });
     const price = priceDetails(officialPrice,html);
-    return `<tr data-id="${html(cells[3])}" data-category="${html(category)}" data-family="${html(cells[1])}">${values.slice(0,4).join("")}<td>${price}</td>${values[4]}<td class="net">${priceDetails(officialPrice,html,true)}</td>${values.slice(5).join("")}<td><button type="button" data-save>Save</button></td></tr>`;
+    return `<tr data-id="${html(cells[3])}" data-category="${html(category)}" data-family="${html(cells[1])}">${values.slice(1,4).join("")}<td>${price}</td>${values[4]}<td class="net">${priceDetails(officialPrice,html,true)}</td>${values.slice(5).join("")}<td><button type="button" data-save>Save</button></td></tr>`;
   }).join("");
   const families = [...new Set(rows.map(row => String(row.cells[1])))].sort();
   const categories = [...new Set(rows.map(row => row.category))].sort();
@@ -48,19 +48,20 @@ export function modelListPage(rows: Row[], generatedAt: string, live: boolean, a
   .table-region{overflow:auto;max-height:64vh;background:white;border:1px solid #dbe4ef;border-radius:9px}
   table{border-collapse:separate;border-spacing:0;width:100%;white-space:nowrap}
   th,td{text-align:left;padding:9px 11px;border-bottom:1px solid #e2eaf4}th{background:#e9f1fc;position:sticky;top:0;z-index:1}
-  td:nth-child(4){font-family:ui-monospace,monospace;color:#274469}td input{width:100px;padding:4px}
+  td:nth-child(3){font-family:ui-monospace,monospace;color:#274469}td input{width:100px;padding:4px}
   tbody tr:hover{background:#f6faff}summary{cursor:pointer}details small{white-space:pre-line;color:#455b75}
   #status{min-height:24px}#status[data-error]{color:#a32d25}
   ${siteStyles}
   body.site-app main#site-main{max-width:none;padding-inline:clamp(12px,2vw,32px)}
-  .table-region{max-height:73vh}td{vertical-align:top;padding:8px}td:nth-child(3),td:nth-child(4){white-space:normal;min-width:10em;max-width:18em;overflow-wrap:anywhere}.net{background:#eff9f5}td input[name=discount]{width:6em}.catalog-price{font-size:13px}.catalog-price+.catalog-price{border-top:1px solid #dde6ee}
+  .table-region{max-height:73vh}td{vertical-align:top;padding:8px}td:nth-child(2),td:nth-child(3){white-space:normal;min-width:10em;max-width:18em;overflow-wrap:anywhere}.net{background:#eff9f5}td input[name=discount]{width:6em}.catalog-price{font-size:13px}.catalog-price+.catalog-price{border-top:1px solid #dde6ee}
   </style></head><body class="site-app">${siteSidebar(admin ? "/model-list?manage=1" : "/model-list")}
   <main id="site-main" data-shared-discounts="${signedIn}"><h1>Model List</h1><p>${live ? "Live SIRAYA catalog checked" : "Last available SIRAYA catalog"} · ${html(generatedAt)}</p>
   <div class="toolbar"><input id="search" type="search" placeholder="Search model, ID, or family" aria-label="Search models">
   <select id="category" aria-label="Category"><option value="">All categories</option>
   ${categories.map(category => `<option>${html(category)}</option>`).join("")}</select>
   <a class="button" href="/model-list${mode}">Refresh catalog</a>
-  <a class="button" id="export" href="/model-list.xlsx${mode}">Export Excel</a>
+  <a class="button" data-export="Billing items" href="/model-list.xlsx${mode}">Excel · By billing item</a>
+  <a class="button" data-export="Models" href="/model-list.xlsx?layout=model${admin ? "&amp;manage=1" : ""}">Excel · By model</a>
   ${admin ? '<button type="button" id="import">Import Model List v3</button><input type="file" accept=".xlsx" id="file" hidden>' : ""}
   <button type="button" class="primary" id="save-all">Save all changes</button>
   <span id="count">${rows.length} models</span></div>
@@ -71,7 +72,7 @@ export function modelListPage(rows: Row[], generatedAt: string, live: boolean, a
     <button type="submit">Apply to family</button>
   </form>` : ""}<p id="status" role="status"></p>
   <div class="table-region" role="region" aria-label="Model specifications" tabindex="0"><table><thead><tr>
-  ${[...headers.slice(0,4),"Siraya list price",headers[4],"Discounted price",...headers.slice(5)].map(name => {
+  ${[...headers.slice(1,4),"Siraya list price",headers[4],"Discounted price",...headers.slice(5)].map(name => {
     const note = name === "RPM" || name === "TPM" ? referenceNotes[1]
       : name === "TTFT (s)" || name === "TPS" ? referenceNotes[0] : "";
     return `<th scope="col"${note ? ` title="${html(note)}" aria-describedby="metric-notes"` : ""}>${html(name)}</th>`;
@@ -96,7 +97,7 @@ function filter() {
   const term = search.value.trim().toLowerCase();
   let count = 0;
   for (const row of rows) {
-    const names = [1, 2, 3].map(index => row.cells[index].textContent).join(" ").toLowerCase();
+    const names = [0, 1, 2].map(index => row.cells[index].textContent).join(" ").toLowerCase();
     row.hidden = !names.includes(term) || Boolean(category.value && category.value !== row.dataset.category);
     if (!row.hidden) count++;
   }
@@ -141,7 +142,7 @@ if (!sharedDiscounts) {
   } catch {
     feedback("Local discounts could not be loaded.", true);
   }
-  document.querySelector("#export").addEventListener("click", async event => {
+  for (const exportLink of document.querySelectorAll("[data-export]")) exportLink.addEventListener("click", async event => {
     if (!localDiscounts.size) return;
     event.preventDefault();
     try {
@@ -153,7 +154,7 @@ if (!sharedDiscounts) {
       const url = URL.createObjectURL(await response.blob());
       const link = document.createElement("a");
       link.href = url;
-      link.download = "SIRAYA Model Router - Model List.xlsx";
+      link.download = "SIRAYA Model Router - " + exportLink.dataset.export + ".xlsx";
       document.body.append(link);
       link.click();
       link.remove();

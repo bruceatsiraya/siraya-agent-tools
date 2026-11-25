@@ -149,14 +149,15 @@ async function serveModelList(request: Request, env: Env, url: URL): Promise<Res
     const { registry, live } = await getListRegistry(env);
     const rows = await modelListRows(env.SIRAYA_METADATA, registry, await officialPrices(env.SIRAYA_REGISTRY));
     if (!exporting) return modelListPage(rows, registry.generatedAt, live, admin, Boolean(identity));
-    if (request.method === "GET") return exportModelList(rows.map(row => row.cells),rows);
+    const compact = url.searchParams.get("layout") === "model";
+    if (request.method === "GET") return exportModelList(rows.map(row => row.cells),rows,compact);
     let cells;
     try {
       cells = applyExportDiscounts(rows, asRecord(await request.json()).discounts);
     } catch {
       return json({ error: "invalid_discounts" }, 400);
     }
-    return exportModelList(cells,rows);
+    return exportModelList(cells,rows,compact);
   } catch (error) {
     console.error("Model List unavailable", error);
     return new Response("Model List is temporarily unavailable.", { status: 503 });
