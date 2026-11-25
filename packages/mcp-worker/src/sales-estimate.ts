@@ -143,6 +143,10 @@ function drawEstimateEditor(){
   drawReverseEditor();estimateLabels();const editor=$('#estimate-editor');editor.replaceChildren();
   estimatePlan.forEach((row,i)=>{
     const line=document.createElement('div');
+    if(i>0&&i===estimatePlan.length-1){
+      const summary=document.createElement('p');summary.id='forward-summary';
+      summary.style.gridColumn='1 / -1';line.append(summary);editor.append(line);return;
+    }
     function field(label,value,onChange){
       const wrap=document.createElement('label'),input=document.createElement('input');
       wrap.textContent=label;input.type='number';input.step='any';input.setAttribute('form','estimate-only');input.value=String(value);
@@ -179,6 +183,16 @@ function renderEstimate(){
   const solution=reverse?solveTarget(reverseRows,reverseTarget/100):null;
   const plan=reverse?[...(solution?.tiers??[]),{end:Infinity,factor:(reverseTail??reverseTarget)/100}]:estimatePlan;
   const ordered=linear?validCurve():reverse?!!solution?.tiers&&validRows(plan):validRows(plan);
+  if(!linear&&!reverse&&plan.length>1){
+    const ceiling=plan.at(-2).end,summary=$('#forward-summary');
+    if(ordered){
+      const finalRate=estimatePayment(ceiling,plan)/ceiling;
+      plan.at(-1).factor=finalRate;
+      const percent=new Intl.NumberFormat(en?'en-US':'zh-TW',{style:'percent',maximumFractionDigits:4}).format(finalRate);
+      const threshold='$'+ceiling.toLocaleString('en-US');
+      summary.textContent=ecText('滿 '+threshold+' 的綜合實付率：'+percent+'。超額部分自動按 '+percent+' 計費。','Blended rate at '+threshold+': '+percent+'. Automatic overage rate: '+percent+'.');
+    }else summary.textContent=ecText('請修正檔位以計算超額費率。','Correct the tiers to calculate the overage rate.');
+  }
   if(reverse){
     $('#reverse-rule').textContent=ecText('未鎖定檔位從前一個鎖定費率（起始為原價）等幅遞減，最低為零。','Unlocked tiers decrease by equal steps from the preceding lock or list price, down to zero.');
     for(const box of document.querySelectorAll('#reverse-rows input[data-result]'))if(box.readOnly)box.value=solution?.tiers?Number((solution.tiers[Number(box.dataset.result)].factor*100).toFixed(6)):'';
